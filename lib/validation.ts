@@ -1,6 +1,6 @@
 // Shared server-side validation + lightweight rate limiting for API routes.
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // ~4MB decoded
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // ~8MB decoded (client re-encodes to JPEG)
 const IMAGE_DATA_URL = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/;
 
 // Rough bounding box around Bali (with margin for Nusa Penida/Lembongan).
@@ -13,7 +13,7 @@ export function validateImageDataUrl(value: unknown): string | null {
   const match = IMAGE_DATA_URL.exec(value);
   if (!match) return "Format gambar tidak didukung (gunakan JPEG, PNG, atau WebP).";
   const decodedBytes = Math.floor((match[2].length * 3) / 4);
-  if (decodedBytes > MAX_IMAGE_BYTES) return "Ukuran gambar terlalu besar (maks 4MB).";
+  if (decodedBytes > MAX_IMAGE_BYTES) return "Ukuran gambar terlalu besar (maks 8MB).";
   return null;
 }
 

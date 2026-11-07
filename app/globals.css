@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Balinese&display=swap");
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -14,6 +16,7 @@ body {
 }
 
 @layer utilities {
+  .font-bali { font-family: "Noto Sans Balinese", sans-serif; }
   .text-balance {
     text-wrap: balance;
   }

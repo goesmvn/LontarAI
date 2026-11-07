@@ -1,19 +1,36 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let client: SupabaseClient | null = null;
+function env() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return url && key ? { url, key } : null;
+}
 
-export function getSupabase(): SupabaseClient {
-  if (!client) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export function isSupabaseConfigured(): boolean {
+  return env() !== null;
+}
 
-    if (!url || !key) {
-      throw new Error(
-        "Missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local"
-      );
-    }
+let browserClient: SupabaseClient | null = null;
 
-    client = createClient(url, key);
-  }
-  return client;
+/** Browser client: holds the user session (magic-link auth). */
+export function getBrowserSupabase(): SupabaseClient {
+  const e = env();
+  if (!e) throw new Error("Supabase belum dikonfigurasi.");
+  browserClient ??= createClient(e.url, e.key);
+  return browserClient;
+}
+
+/** Server client acting as the caller (RLS applies) when a bearer token is given, else anonymous. */
+export function getServerSupabase(accessToken?: string): SupabaseClient {
+  const e = env();
+  if (!e) throw new Error("Supabase belum dikonfigurasi.");
+  return createClient(e.url, e.key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
+  });
+}
+
+export function bearerToken(headers: Headers): string | undefined {
+  const h = headers.get("authorization");
+  return h?.startsWith("Bearer ") ? h.slice(7) : undefined;
 }

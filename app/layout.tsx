@@ -16,9 +16,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Bali Bersih — Sortir Sampah dengan AI",
+  title: "LontarAI — Pelestarian Naskah Lontar Bali",
   description:
-    "Aplikasi AI untuk klasifikasi sampah dan pelaporan penumpukan sampah liar di Bali.",
+    "Digitalisasi, draf transliterasi AI, dan arsip naskah lontar Bali dengan kontrol privasi privat atau publik.",
 };
 
 export default function RootLayout({
