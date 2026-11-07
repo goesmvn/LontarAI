@@ -55,6 +55,8 @@ export default function StudioPage() {
   const [manualUnicode, setManualUnicode] = useState<Set<number>>(new Set());
   const [showGuide, setShowGuide] = useState(false);
   const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const [condition, setCondition] = useState<"baik" | "rapuh" | "rusak_sebagian" | "fragmentaris">("baik");
 
   // save form
   const [title, setTitle] = useState("");
@@ -223,7 +225,7 @@ export default function StudioPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({
           title, category: analysis.category, owner_name: owner, affiliation,
-          estimated_creation_era: era || undefined,
+          estimated_creation_era: era || undefined, physical_condition: condition,
           regency, village_banjar: banjar, latitude: lat, longitude: lng,
           visibility, is_pingit: pingit, consent_public: consent, show_owner_name: showOwner,
           image,
@@ -251,8 +253,8 @@ export default function StudioPage() {
   if (saved) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="text-5xl mb-3">{saved.visibility === "public" ? "🌏" : "🔒"}</div>
-        <h1 className="text-2xl font-bold text-terra-700 mb-2">Naskah tersimpan</h1>
+        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-terra-50 text-primary flex items-center justify-center"><Icon name={saved.visibility === "public" ? "public" : "lock"} size={34} /></div>
+        <h1 className="font-serif text-3xl text-stone-900 mb-2">Naskah tersimpan</h1>
         <p className="text-stone-600 mb-6">
           {saved.visibility === "public"
             ? "Naskah kini tampil di Arsip Publik. Lokasi ditampilkan sebagai area (±1 km), bukan titik tepat. Anda dapat mencabutnya kapan saja di Vault."
@@ -296,11 +298,11 @@ export default function StudioPage() {
       </p>
 
       {!image && (
-        <div className="rounded-2xl border-2 border-dashed border-terra-300 bg-white p-10 text-center space-y-4">
+        <div className="rounded-3xl border-2 border-dashed border-stone-300 bg-white p-12 text-center space-y-4">
           <p className="text-stone-700">Unggah foto satu lempir lontar (JPG, PNG, atau WebP).</p>
           <div className="flex flex-wrap gap-3 justify-center">
             <label className="px-5 py-2.5 rounded-full bg-terra-600 text-white font-semibold cursor-pointer hover:bg-terra-700">
-              📷 Pilih / Ambil Foto
+              Pilih / Ambil Foto
               <input type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) load(f); e.target.value = ""; }} />
             </label>
@@ -318,49 +320,64 @@ export default function StudioPage() {
       {image && (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left: viewer */}
-          <div className="min-w-0 bg-white rounded-2xl border border-stone-200 overflow-hidden self-start shadow-[0_2px_12px_rgba(24,24,27,0.03)]">
-            <div className="px-5 py-3.5 border-b border-stone-100 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-xs font-semibold text-stone-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amberink-700" />{title.trim() ? `Lempir: ${title}` : "Citra naskah"}
+          <div className="min-w-0 bg-white rounded-3xl border border-stone-200 overflow-hidden self-start shadow-[0_2px_12px_rgba(24,24,27,0.03)] flex flex-col">
+            <div className="px-6 py-4 border-b border-stone-100 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-stone-900 flex items-center gap-2.5 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-amberink-700 shrink-0" />
+                <span className="truncate">{title.trim() ? `Lempir: ${title}` : activeSample ? SAMPLE_LIST.find((x) => x.id === activeSample)?.title : "Lempir Unggahan"}</span>
+                {dims && <span className="font-mono text-[11px] text-stone-400 shrink-0">{dims.w}×{dims.h}px</span>}
               </h2>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
-                  <button type="button" onClick={() => toggleEnhanced(false)} className={`px-2.5 py-1 rounded-md text-xs ${!enhanced ? "bg-white text-primary font-semibold shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>Asli</button>
-                  <button type="button" onClick={() => toggleEnhanced(true)} className={`px-2.5 py-1 rounded-md text-xs ${enhanced ? "bg-white text-primary font-semibold shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>
-                    {enhancing ? "Memproses…" : "Kontras tinggi"}
-                  </button>
-                </div>
-                <div className="flex items-center gap-0.5 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
-                  <button type="button" aria-label="Perkecil" onClick={() => setZoom(Math.max(100, zoom - 25))} className="p-1 rounded-md text-stone-500 hover:text-stone-900"><Icon name="zoom_out" size={16} /></button>
-                  <span className="text-xs font-mono text-stone-700 w-10 text-center">{zoom}%</span>
-                  <button type="button" aria-label="Perbesar" onClick={() => setZoom(Math.min(500, zoom + 25))} className="p-1 rounded-md text-stone-500 hover:text-stone-900"><Icon name="zoom_in" size={16} /></button>
-                </div>
+              <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200">
+                <button type="button" onClick={() => toggleEnhanced(false)} className={`px-3 py-1 rounded-lg text-xs ${!enhanced ? "bg-white text-stone-900 font-medium shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>Asli</button>
+                <button type="button" onClick={() => toggleEnhanced(true)} className={`px-3 py-1 rounded-lg text-xs ${enhanced ? "bg-white text-stone-900 font-medium shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>
+                  {enhancing ? "Memproses…" : "Kontras Tinggi"}
+                </button>
+                <span className="flex items-center gap-0.5 pl-1 text-stone-600">
+                  <button type="button" aria-label="Perkecil" onClick={() => setZoom(Math.max(100, zoom - 25))} className="p-1 hover:text-stone-900"><Icon name="zoom_out" size={16} /></button>
+                  <span className="text-xs font-mono w-10 text-center">{zoom}%</span>
+                  <button type="button" aria-label="Perbesar" onClick={() => setZoom(Math.min(500, zoom + 25))} className="p-1 hover:text-stone-900"><Icon name="zoom_in" size={16} /></button>
+                </span>
               </div>
             </div>
-            <div className="p-4 space-y-3">
-            <div className="overflow-auto max-h-[70vh] rounded-xl border border-stone-200 bg-stone-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto"
-                style={{ width: `${zoom}%` }} />
+            <div className="bg-stone-50 p-6 flex-1">
+              <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+                <div className="relative overflow-auto max-h-[60vh] rounded-xl bg-stone-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto block"
+                    style={{ width: `${zoom}%` }} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+                  {zoom === 100 && (
+                    <div className="pointer-events-none absolute inset-x-4 top-1/3 bottom-1/3 border border-amber-500/40 rounded-md flex items-center justify-between px-2">
+                      <span className="px-2 py-0.5 rounded bg-white/95 font-mono text-[10px] font-semibold text-amberink-700 uppercase">ROI Inskripsi Aktif</span>
+                      {analysis && analysis.model !== "manual" && analysis.confidence_score > 0 && <span className="px-2 py-0.5 rounded bg-white/95 font-mono text-[10px] text-stone-700">Keyakinan {Math.round(analysis.confidence_score * 100)}%</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="mt-4 text-center text-xs text-stone-500 flex items-center justify-center gap-2"><Icon name="open_with" size={16} /> Geser kanvas untuk menelusuri lempir <span>•</span> <span className="font-mono">Kontras tinggi = Sauvola (pratinjau)</span></p>
+              <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs">
+                <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
+                {enhancedImg && !loading && (
+                  <button type="button" onClick={source === "enhanced" ? () => { setSource("asli"); image && analyze(image); } : reanalyzeEnhanced} className="text-primary underline">
+                    {source === "enhanced" ? "Bantuan AI dengan gambar asli" : "Bantuan AI dengan versi Enhanced"}
+                  </button>
+                )}
+              </div>
+              {analysis && analysis.model !== "manual" && <p className="text-xs text-stone-400 text-center mt-2">Bantuan AI terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
             </div>
-            <p className="text-xs text-stone-500 text-center">Perbesar lalu geser untuk membaca per baris. Kontras tinggi = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
-              {enhancedImg && !loading && (
-                <button type="button" onClick={source === "enhanced" ? () => { setSource("asli"); image && analyze(image); } : reanalyzeEnhanced} className="text-terra-700 underline">
-                  {source === "enhanced" ? "Bantuan AI dengan gambar asli" : "Bantuan AI dengan versi Enhanced"}
-                </button>
-              )}
-            </div>
-            {analysis && analysis.model !== "manual" && <p className="text-xs text-stone-400">Bantuan AI terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
+            <div className="px-6 py-3.5 border-t border-stone-100 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-stone-600">
+              <span className="flex items-center gap-1.5"><Icon name="verified" size={16} className={dims && Math.max(dims.w, dims.h) >= 1600 ? "text-emerald-600" : "text-amber-600"} />
+                <b className="text-stone-900">{dims && Math.max(dims.w, dims.h) >= 1600 ? "Resolusi Optimal untuk Transkripsi" : "Resolusi rendah: foto lebih dekat disarankan"}</b></span>
+              <span>Kondisi Fisik: <b className="text-stone-900">{{ baik: "Baik (Utuh)", rapuh: "Rapuh", rusak_sebagian: "Rusak Sebagian", fragmentaris: "Fragmentaris" }[condition]}</b></span>
+              <span className="text-stone-300">|</span>
+              <span>Serat Lontar: <b className="text-stone-900">Tal (Borassus)</b></span>
             </div>
           </div>
 
           {/* Right: results */}
-          <div className="min-w-0 bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-[0_2px_12px_rgba(24,24,27,0.03)]">
-            <div className="px-5 py-3.5 border-b border-stone-100 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-xs font-semibold text-stone-900 uppercase tracking-wider">
-                <Icon name="auto_awesome" size={18} className="text-primary" /> Transkripsi &amp; transliterasi
+          <div className="min-w-0 bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-[0_2px_12px_rgba(24,24,27,0.03)]">
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2.5 text-sm font-semibold text-stone-900 uppercase tracking-wide">
+                <Icon name="auto_awesome" size={20} className="text-primary" /> Interpretasi &amp; Transliterasi
               </span>
               {analysis && (
                 <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
@@ -372,19 +389,21 @@ export default function StudioPage() {
                 </div>
               )}
             </div>
-            <div className="p-5 space-y-5">
+            <div className="p-6 space-y-6">
             {!analysis && !loading && !error && (
-              <div className="rounded-2xl border border-terra-200 bg-amber-50/50 p-5 space-y-3">
-                <h2 className="font-serif text-lg font-semibold text-stone-900">Bagaimana ingin memulai?</h2>
+              <div className="space-y-3">
+                <h2 className="font-serif text-xl font-medium text-stone-900">Bagaimana ingin memulai?</h2>
                 <button type="button" onClick={() => { setAnalysis(emptyAnalysis()); }}
-                  className="w-full text-left rounded-xl border border-terra-400 bg-white p-3 hover:bg-amber-50">
-                  <b>✍ Isi manual</b> <span className="text-xs text-stone-500">(disarankan, gratis)</span>
-                  <p className="text-sm text-stone-600">Ketik transliterasi Latin per baris; aksara Bali dibuat otomatis oleh aturan konversi dan dapat Anda ubah.</p>
+                  className="w-full text-left rounded-2xl border border-primary/40 bg-terra-50/40 p-4 hover:bg-terra-50 flex gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-white border border-stone-200 text-primary flex items-center justify-center shrink-0"><Icon name="edit_note" size={22} /></span>
+                  <span><b className="text-stone-900">Isi manual</b> <span className="text-xs text-stone-500">(disarankan, gratis)</span>
+                  <span className="block text-sm text-stone-600">Ketik transliterasi Latin per baris; aksara Bali dibuat otomatis oleh aturan konversi dan dapat Anda ubah.</span></span>
                 </button>
                 <button type="button" onClick={() => image && analyze(image)}
-                  className="w-full text-left rounded-xl border border-stone-300 bg-white p-3 hover:bg-stone-50">
-                  <b>🤖 Bantuan AI</b> <span className="text-xs text-stone-500">(opsional, berbayar per pemakaian)</span>
-                  <p className="text-sm text-stone-600">AI menebak jumlah baris, blok, dan rumpun naskah. AI belum dapat membaca aksara Bali dengan andal; transkripsi tetap perlu Anda isi.</p>
+                  className="w-full text-left rounded-2xl border border-stone-200 bg-white p-4 hover:bg-stone-50 flex gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-stone-50 border border-stone-200 text-stone-700 flex items-center justify-center shrink-0"><Icon name="smart_toy" size={22} /></span>
+                  <span><b className="text-stone-900">Bantuan AI</b> <span className="text-xs text-stone-500">(opsional, berbayar per pemakaian)</span>
+                  <span className="block text-sm text-stone-600">AI menebak jumlah baris, blok, dan rumpun naskah. AI belum dapat membaca aksara Bali dengan andal; transkripsi tetap perlu Anda isi.</span></span>
                 </button>
               </div>
             )}
@@ -409,7 +428,7 @@ export default function StudioPage() {
             {analysis && !loading && (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">
+                  <span className="px-2.5 py-1 rounded-full bg-amberink-100 border border-amberink-200 text-amberink-700 text-[11px] font-mono font-semibold">
                     {analysis.model === "manual" ? "Transkripsi manual" : edited ? "Dikoreksi manusia" : "Draf AI"}
                   </span>
                   {analysis.model !== "manual" && analysis.confidence_score > 0 && (
@@ -426,13 +445,13 @@ export default function StudioPage() {
                 {/* 1. Aksara */}
                 <section className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-amberink-700 uppercase tracking-wider">1. Aksara Bali (Unicode)</h3>
+                    <h3 className="text-sm font-semibold text-amberink-700 uppercase tracking-wide">1. Aksara Bali (Unicode)</h3>
                     <button type="button" onClick={() => copy("aksara", analysis.unicode_transcription)} disabled={!analysis.unicode_transcription}
                       className="flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-primary px-2 py-0.5 rounded-md hover:bg-stone-100 disabled:opacity-40">
                       <Icon name="content_copy" size={15} />{copied === "aksara" ? "Tersalin" : "Salin aksara"}
                     </button>
                   </div>
-                  <div className="font-bali p-4 rounded-xl bg-stone-50 border border-stone-200 text-2xl text-stone-900 leading-loose tracking-wide whitespace-pre-line min-h-[5rem] select-all">
+                  <div className="font-bali p-5 rounded-2xl bg-stone-50 border border-stone-200 text-3xl text-stone-900 leading-loose tracking-wide whitespace-pre-line min-h-[5rem] select-all">
                     {analysis.unicode_transcription.trim() || <span className="font-sans text-sm text-stone-400 tracking-normal">Aksara muncul otomatis saat Anda mengetik transliterasi Latin di bawah.</span>}
                   </div>
                 </section>
@@ -440,7 +459,7 @@ export default function StudioPage() {
                 {/* 2. Latin */}
                 <section className="space-y-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <h3 className="text-xs font-semibold text-stone-900 uppercase tracking-wider">2. Transliterasi Latin <span className="normal-case font-normal text-stone-500">(dapat disunting)</span></h3>
+                    <h3 className="text-sm font-semibold text-stone-900 uppercase tracking-wide">2. Transliterasi Latin Fonetik <span className="normal-case font-normal text-stone-500 text-xs">(dapat disunting)</span></h3>
                     <div className="flex items-center gap-1" onMouseDown={(e) => e.preventDefault()}>
                       {["ā", "ī", "ū", "ĕ", "é", "ṭ", "ḍ", "ṇ", "ś", "ṣ"].map((ch) => (
                         <button key={ch} type="button" onClick={() => insertChar(ch)} className="px-1.5 py-0.5 text-[11px] font-mono rounded bg-stone-100 text-stone-900 hover:bg-stone-200">{ch}</button>
@@ -458,7 +477,7 @@ export default function StudioPage() {
                   )}
                   {analysis.lines.map((l, i) => (
                     <div key={i} onFocus={() => setActiveLine(i)}
-                      className={`rounded-xl border p-2.5 space-y-1.5 ${activeLine === i ? "border-stone-300 bg-amberink-50" : "border-stone-200"}`}>
+                      className={`rounded-2xl border p-3 space-y-1.5 ${activeLine === i ? "border-stone-300 bg-amberink-50" : "border-stone-200"}`}>
                       <div className="flex items-center justify-between text-[11px] text-stone-500">
                         <span className="font-mono">Baris {l.index}</span>
                         <span className="flex items-center gap-2">
@@ -487,7 +506,7 @@ export default function StudioPage() {
                 {/* 3. Terjemahan */}
                 <section className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-stone-900 uppercase tracking-wider">3. Terjemahan makna</h3>
+                    <h3 className="text-sm font-semibold text-stone-900 uppercase tracking-wide">3. Terjemahan Makna</h3>
                     <button type="button" onClick={() => copy("teks", `${analysis.latin_transliteration}\n\n${lang === "id" ? analysis.translation.indonesian : analysis.translation.english}`)}
                       className="flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-primary px-2 py-0.5 rounded-md hover:bg-stone-100">
                       <Icon name="content_copy" size={15} />{copied === "teks" ? "Tersalin" : "Salin teks"}
@@ -496,23 +515,23 @@ export default function StudioPage() {
                   <textarea rows={4} value={lang === "id" ? analysis.translation.indonesian : analysis.translation.english}
                     placeholder={lang === "id" ? "Terjemahan Bahasa Indonesia…" : "English translation…"}
                     onChange={(e) => { setAnalysis({ ...analysis, translation: { ...analysis.translation, [lang === "id" ? "indonesian" : "english"]: e.target.value } }); setEdited(true); }}
-                    className="w-full rounded-xl border border-stone-200 bg-white p-3.5 text-sm text-stone-900 leading-relaxed focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    className="w-full rounded-2xl border border-stone-200 bg-white p-4 text-base text-stone-900 leading-relaxed focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
                 </section>
 
                 {analysis.philosophical_context && (
-                  <div className="p-4 rounded-xl bg-amberink-50 border border-amberink-200 space-y-1.5">
-                    <div className="flex items-center gap-2 text-amberink-700 text-xs font-semibold uppercase tracking-wider"><Icon name="menu_book" size={18} /> Konteks (tafsiran AI)</div>
+                  <div className="p-5 rounded-2xl bg-amberink-50 border border-amberink-200 space-y-2">
+                    <div className="flex items-center gap-2 text-amberink-700 text-sm font-semibold uppercase tracking-wide"><Icon name="local_library" size={20} /> Makna Filosofis (tafsiran AI)</div>
                     <p className="font-serif italic text-sm text-amber-950 leading-relaxed">{analysis.philosophical_context}</p>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2 text-xs pt-1">
-                  <button type="button" className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 hover:border-stone-300"
+                  <button type="button" className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 flex items-center gap-1.5"
                     onClick={() => downloadJson(`lontarai-${Date.now()}.json`, buildExport(
                       { title, owner, regency, village_banjar: banjar, era, source: "LontarAI Studio" }, analysis, edited))}>
-                    ⬇ Unduh JSON
+                    <Icon name="download" size={15} /> Unduh JSON
                   </button>
-                  <button type="button" className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 hover:border-stone-300" onClick={() => window.print()}>
-                    🖨 Cetak / Simpan PDF
+                  <button type="button" className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 flex items-center gap-1.5" onClick={() => window.print()}>
+                    <Icon name="print" size={15} /> Cetak / Simpan PDF
                   </button>
                 </div>
                 <p className="text-xs text-stone-500">
@@ -532,10 +551,10 @@ export default function StudioPage() {
           meta={{ title, owner, regency, village_banjar: banjar, era }} />
       )}
 
-      {/* Save panel */}
+      {/* Detail panel */}
       {analysis && !loading && (
-        <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-5 space-y-5">
-          <h2 className="text-lg font-semibold text-terra-800">Simpan naskah</h2>
+        <section id="detail-simpan" className="mt-6 rounded-3xl border border-stone-200 bg-white p-6 space-y-5">
+          <h2 className="font-serif text-xl font-medium text-stone-900 flex items-center gap-2"><Icon name="inventory_2" size={22} className="text-primary" /> Detail Naskah &amp; Penyimpanan</h2>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Judul naskah *"><input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} /></Field>
@@ -543,6 +562,11 @@ export default function StudioPage() {
             <Field label="Afiliasi">
               <select value={affiliation} onChange={(e) => setAffiliation(e.target.value)} className={inp}>
                 {AFFILIATIONS.map((a) => <option key={a}>{a}</option>)}
+              </select>
+            </Field>
+            <Field label="Kondisi fisik">
+              <select value={condition} onChange={(e) => setCondition(e.target.value as typeof condition)} className={inp}>
+                <option value="baik">Baik (utuh)</option><option value="rapuh">Rapuh</option><option value="rusak_sebagian">Rusak sebagian</option><option value="fragmentaris">Fragmentaris</option>
               </select>
             </Field>
             <Field label="Perkiraan era"><input value={era} onChange={(e) => setEra(e.target.value)} placeholder="mis. abad ke-19" className={inp} /></Field>
@@ -557,7 +581,7 @@ export default function StudioPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-stone-700">Lokasi naskah *</span>
-              <button type="button" onClick={useMyLocation} className="text-sm text-terra-700 underline">📍 Gunakan lokasi saya</button>
+              <button type="button" onClick={useMyLocation} className="text-sm text-terra-700 underline"><Icon name="my_location" size={15} className="inline mr-1" />Gunakan lokasi saya</button>
             </div>
             <MapPicker lat={lat} lng={lng} onPick={(a, b) => { setLat(a); setLng(b); }} />
             <p className="text-xs text-stone-500">
@@ -570,11 +594,11 @@ export default function StudioPage() {
             <legend className="text-sm font-medium text-stone-700 mb-1">Siapa yang boleh melihat?</legend>
             <label className={`flex gap-3 rounded-xl border p-3 cursor-pointer ${visibility === "private" ? "border-terra-500 bg-amber-50" : "border-stone-200"}`}>
               <input type="radio" checked={visibility === "private"} onChange={() => setVisibility("private")} />
-              <span><b>🔒 Private Vault</b> <span className="text-sm text-stone-600">— hanya Anda. Pilihan awal dan paling aman.</span></span>
+              <span><b>Private Vault</b> <span className="text-sm text-stone-600">— hanya Anda. Pilihan awal dan paling aman.</span></span>
             </label>
             <label className={`flex gap-3 rounded-xl border p-3 ${pingit ? "opacity-50" : "cursor-pointer"} ${visibility === "public" ? "border-terra-500 bg-amber-50" : "border-stone-200"}`}>
               <input type="radio" disabled={pingit} checked={visibility === "public"} onChange={() => setVisibility("public")} />
-              <span><b>🌏 Arsip Publik</b> <span className="text-sm text-stone-600">— gambar, transliterasi, dan terjemahan dapat dilihat siapa saja; lokasi hanya berupa area.</span></span>
+              <span><b>Arsip Publik</b> <span className="text-sm text-stone-600">— gambar, transliterasi, dan terjemahan dapat dilihat siapa saja; lokasi hanya berupa area.</span></span>
             </label>
             <label className="flex gap-3 text-sm text-stone-700 cursor-pointer">
               <input type="checkbox" checked={pingit} onChange={(e) => { setPingit(e.target.checked); if (e.target.checked) { setVisibility("private"); setConsent(false); } }} />
@@ -596,11 +620,29 @@ export default function StudioPage() {
 
           <AuthPanel />
           {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-          <button type="button" onClick={save} disabled={!canSave || !session || saving}
-            className="w-full sm:w-auto px-8 py-3 rounded-full bg-terra-600 text-white font-semibold hover:bg-terra-700 disabled:bg-stone-300 disabled:cursor-not-allowed">
-            {saving ? "Menyimpan…" : visibility === "public" ? "Simpan & Publikasikan" : "Simpan ke Vault"}
-          </button>
         </section>
+      )}
+
+      {/* Bottom action bar */}
+      {analysis && !loading && (
+        <div className="mt-6 rounded-3xl border border-stone-200 bg-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-stone-600">
+            <button type="button" onClick={() => setVisibility(visibility === "private" ? (pingit ? "private" : "public") : "private")}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-100 border border-stone-200">
+              <Icon name={visibility === "private" ? "lock" : "public"} size={18} className="text-primary" />
+              Penyimpanan: <b className="text-primary">{visibility === "private" ? "Private Vault (Hanya Saya)" : "Arsip Publik"}</b>
+            </button>
+            <span className="text-xs text-stone-500">• Ubah di panel detail</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => copy("teks", `${analysis.latin_transliteration}\n\n${lang === "id" ? analysis.translation.indonesian : analysis.translation.english}`)}
+              className="px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-sm font-medium flex items-center gap-2 hover:bg-stone-50"><Icon name="content_copy" size={18} />{copied === "teks" ? "Tersalin" : "Salin Teks"}</button>
+            <button type="button" onClick={() => { if (!canSave || !session) { document.getElementById("detail-simpan")?.scrollIntoView({ behavior: "smooth" }); return; } save(); }} disabled={saving}
+              className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover disabled:bg-stone-300 text-white text-sm font-semibold flex items-center gap-2">
+              <Icon name="bookmark" size={18} />{saving ? "Menyimpan…" : visibility === "public" ? "Simpan & Publikasikan" : "Simpan ke Vault"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

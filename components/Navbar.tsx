@@ -26,7 +26,8 @@ export default function Navbar() {
         <div className="h-16 w-full px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-serif text-xl font-semibold group-hover:bg-primary transition-colors">L</div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Logo LontarAI" className="w-10 h-10 rounded-xl object-contain" />
               <span className="font-serif text-2xl font-semibold tracking-tight text-stone-900">LontarAI</span>
             </Link>
             <span className="hidden 2xl:inline whitespace-nowrap px-2.5 py-1 rounded-full bg-terra-100 text-primary text-xs font-medium">Bali DigiFest 2026</span>

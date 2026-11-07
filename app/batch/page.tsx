@@ -21,7 +21,7 @@ const CENTROID: Record<string, [number, number]> = {
   Gianyar: [-8.54, 115.33], Jembrana: [-8.36, 114.67], Karangasem: [-8.45, 115.61], Klungkung: [-8.54, 115.4], Tabanan: [-8.54, 115.12],
 };
 const STATUS_META: Record<LeafStatus, { label: string; cls: string; icon: string }> = {
-  terindeks: { label: "Terindeks", cls: "text-stone-600", icon: "check_circle" },
+  terindeks: { label: "Terindeks", cls: "text-stone-500", icon: "radio_button_unchecked" },
   memproses: { label: "Memproses…", cls: "text-blue-600", icon: "refresh" },
   selesai: { label: "Selesai", cls: "text-emerald-700", icon: "check_circle" },
   review: { label: "Perlu Review", cls: "text-amber-700", icon: "warning" },

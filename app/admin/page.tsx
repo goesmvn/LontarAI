@@ -33,7 +33,7 @@ function Bars({ data, labels }: { data: Record<string, number>; labels?: Record<
       {entries.map(([k, v]) => (
         <li key={k} className="text-sm">
           <div className="flex justify-between"><span className="text-stone-700">{labels?.[k] ?? k}</span><span className="text-stone-500">{v}</span></div>
-          <div className="h-1.5 rounded bg-stone-100"><div className="h-full rounded bg-terra-500" style={{ width: `${(v / max) * 100}%` }} /></div>
+          <div className="h-1.5 rounded bg-stone-100"><div className="h-full rounded bg-primary" style={{ width: `${(v / max) * 100}%` }} /></div>
         </li>
       ))}
     </ul>
@@ -87,12 +87,12 @@ export default function AdminPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-terra-800">Panel Admin</h1>
+        <h1 className="font-serif text-3xl text-stone-900 font-medium">Panel Admin</h1>
         <p className="text-sm text-stone-600">Moderasi arsip publik. Isi Private Vault tidak pernah ditampilkan di sini; hanya jumlahnya.</p>
       </div>
       <AuthPanel />
       {ready && !session && <p className="text-stone-500 text-sm">Masuk dengan email admin untuk melanjutkan.</p>}
-      {denied && <p className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-3">{denied}</p>}
+      {denied && <p className="rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm p-3">{denied}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {stats && (
@@ -100,7 +100,7 @@ export default function AdminPage() {
           <div className="flex gap-1 border-b border-stone-200">
             {([["ringkasan", "Ringkasan"], ["naskah", `Naskah publik (${items.length})`], ["laporan", `Laporan (${openReports.length})`]] as const).map(([id, label]) => (
               <button key={id} type="button" onClick={() => setTab(id)}
-                className={`px-3 py-2 text-sm -mb-px border-b-2 ${tab === id ? "border-terra-600 text-terra-800 font-semibold" : "border-transparent text-stone-500"}`}>{label}</button>
+                className={`px-3 py-2 text-sm -mb-px border-b-2 ${tab === id ? "border-primary text-primary font-semibold" : "border-transparent text-stone-500"}`}>{label}</button>
             ))}
           </div>
 
@@ -108,8 +108,8 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[["Total naskah", stats.total], ["Publik", stats.public], ["Privat", stats.private], ["Pingit", stats.pingit], ["Laporan terbuka", stats.openReports]].map(([l, n]) => (
-                  <div key={String(l)} className="rounded-xl border border-stone-200 bg-white p-3 text-center">
-                    <div className="text-2xl font-bold text-terra-800">{n}</div>
+                  <div key={String(l)} className="rounded-2xl border border-stone-200 bg-white p-4 text-center">
+                    <div className="font-serif text-3xl font-semibold text-stone-900">{n}</div>
                     <div className="text-xs text-stone-500">{l}</div>
                   </div>
                 ))}
@@ -125,7 +125,7 @@ export default function AdminPage() {
           {tab === "naskah" && (
             <div className="space-y-3">
               <div className="flex flex-wrap gap-3 items-center text-sm">
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-1.5 rounded-lg border border-stone-300">
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-1.5 rounded-xl border border-stone-200 bg-white">
                   <option value="">Semua status</option>
                   {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
@@ -140,7 +140,7 @@ export default function AdminPage() {
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <a href={`/archive/${i.slug}`} target="_blank" rel="noreferrer" className="font-medium text-stone-800 hover:underline truncate">{i.title}</a>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${i.status === "terverifikasi" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{STATUS[i.status]}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${i.status === "terverifikasi" ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-amberink-100 text-amberink-700"}`}>{STATUS[i.status]}</span>
                         {i.openReports > 0 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">{i.openReports} laporan</span>}
                       </div>
                       <p className="text-xs text-stone-500">{CATEGORY_LABELS[i.category]} · {i.village_banjar}, {i.regency} · {i.owner_name}</p>
@@ -148,7 +148,7 @@ export default function AdminPage() {
                       <div className="flex flex-wrap gap-3 text-xs pt-1">
                         {i.status === "terverifikasi"
                           ? <button type="button" onClick={() => act(`/api/admin/manuscripts/${i.id}`, { action: "unverify" })} className="text-stone-600 underline">Batalkan verifikasi</button>
-                          : <button type="button" onClick={() => act(`/api/admin/manuscripts/${i.id}`, { action: "verify" })} className="text-green-700 underline">Tandai terverifikasi</button>}
+                          : <button type="button" onClick={() => act(`/api/admin/manuscripts/${i.id}`, { action: "verify" })} className="text-emerald-700 underline">Tandai terverifikasi</button>}
                         <button type="button" className="text-red-600 underline"
                           onClick={() => act(`/api/admin/manuscripts/${i.id}`, { action: "takedown" }, `Turunkan "${i.title}" dari arsip publik? Naskah dikembalikan ke Vault pemiliknya.`)}>
                           Turunkan dari publik
@@ -185,7 +185,7 @@ export default function AdminPage() {
                           Turunkan naskah
                         </button>
                       )}
-                      <button type="button" className="text-green-700 underline" onClick={() => act(`/api/admin/reports/${r.id}`, { status: "resolved" })}>Tandai selesai</button>
+                      <button type="button" className="text-emerald-700 underline" onClick={() => act(`/api/admin/reports/${r.id}`, { status: "resolved" })}>Tandai selesai</button>
                       <button type="button" className="text-stone-600 underline" onClick={() => act(`/api/admin/reports/${r.id}`, { status: "dismissed" })}>Tolak laporan</button>
                     </div>
                   )}

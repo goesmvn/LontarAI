@@ -33,7 +33,8 @@ export default function MasukPage() {
       <div className="w-full max-w-[420px]">
         <header className="text-center mb-8">
           <div className="inline-flex items-center gap-3">
-            <span className="w-11 h-11 rounded-xl bg-stone-900 text-white flex items-center justify-center font-serif text-2xl">L</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Logo LontarAI" className="w-14 h-14 rounded-2xl object-contain" />
             <span className="font-serif text-3xl text-stone-900 tracking-tight">LontarAI</span>
           </div>
           <p className="text-xs uppercase tracking-wider text-amberink-700 font-semibold mt-5">Kedaulatan Arsip Digital Naskah Lontar</p>

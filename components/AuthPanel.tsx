@@ -18,7 +18,7 @@ export default function AuthPanel() {
     return (
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="text-stone-600 truncate">Masuk sebagai {session.user.email}</span>
-        <button type="button" onClick={() => getBrowserSupabase().auth.signOut()} className="text-terra-700 hover:underline shrink-0">
+        <button type="button" onClick={() => getBrowserSupabase().auth.signOut()} className="text-primary hover:underline shrink-0">
           Keluar
         </button>
       </div>
@@ -36,16 +36,16 @@ export default function AuthPanel() {
   };
 
   return (
-    <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2">
+    <div className="rounded-2xl bg-amberink-50 border border-amberink-200 p-4 space-y-2">
       <p className="text-sm text-stone-700">Masuk dengan email untuk menyimpan naskah. Tidak perlu kata sandi; kami kirim tautan masuk.</p>
       {sent ? (
-        <p className="text-sm text-green-700">Tautan masuk dikirim ke {email}. Buka email Anda.</p>
+        <p className="text-sm text-emerald-700">Tautan masuk dikirim ke {email}. Buka email Anda.</p>
       ) : (
         <div className="flex gap-2">
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com"
-            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-300 text-sm" />
+            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
           <button type="button" onClick={send} disabled={!email.includes("@")}
-            className="px-4 py-2 rounded-lg bg-terra-600 text-white text-sm font-medium disabled:bg-stone-300">Kirim</button>
+            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium disabled:bg-stone-300">Kirim</button>
         </div>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
