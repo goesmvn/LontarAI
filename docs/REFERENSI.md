@@ -39,3 +39,25 @@ jadi catatan "relevansi" adalah kesimpulan dari judul dan perlu diverifikasi seb
 1. Bandingkan aturan `lib/aksara.ts` dengan makalah Kesiman (2018) dan Indrawan (2018, 2021) dan catat selisihnya.
 2. Minta izin/akses AMADI_LontarSet untuk evaluasi segmentasi baris dan (kelak) melatih pengenal glif.
 3. Pengenal otomatis: model baris-ke-teks (mis. TrOCR/CRNN) dilatih dari transkripsi terverifikasi; Readbali memakai pendekatan serupa.
+
+## Model & dataset OCR yang tersedia (pencarian 7 Nov 2026)
+
+Dicari di HuggingFace, GitHub, Kaggle, Zenodo, dan tessdata Tesseract. **Tidak ditemukan model OCR aksara Bali/lontar siap pakai yang terbuka.**
+Lisensi belum dibaca penuh; periksa sebelum memakai. Tidak ada yang diunduh.
+
+| Kandidat | Isi | Catatan |
+|---|---|---|
+| github.com/gindrawan/balinese-script-training | ~99 berkas: citra aksara **cetak** + teks acuan (`.gt.txt`) untuk pelatihan Tesseract | Tanpa lisensi tertulis; penulisnya peneliti transliterasi (Indrawan). Cocok untuk pembaca aksara cetak, bukan lontar. |
+| github.com/teguhteja/ocr-balinese | Catatan pelatihan Tesseract + contoh lontar `.box` + font Noto Sans Balinese | Tanpa lisensi; hanya dokumentasi dan contoh kecil. |
+| kaggle.com/datasets/hariangr/aksara-bali-datasets | Citra glif aksara wianjana dan swalalita (3,4 MB) | "Data files © Original Authors". Bahan pengenal per-glif. |
+| kaggle.com/datasets/wildanfatahh22/aksara-bali | Dataset aksara Bali (4,7 MB) | Lisensi tidak diketahui. |
+| AMADI_LontarSet (Kesiman dkk.) | Dataset lontar Bali beranotasi, tulisan tangan asli | Akses lewat penulis (Undiksha); tautan unduhan tidak dapat diverifikasi. Kandidat terbaik untuk melatih pengenal lontar. |
+| Readbali (readbali.com/ocr) | Deteksi objek + TrOCR + transliterasi, diakses lewat login | Layanan tertutup; tidak ada API publik yang diketahui. Hubungi pengelola untuk kerja sama. |
+| huggingface.co/aswin-dev/TrOCR_finetuned_Tamil_palm_Leaf_Vattaeluthu | TrOCR yang di-fine-tune untuk lontar Tamil | Bukan aksara Bali, tetapi contoh resep (TrOCR pada potongan baris lontar). |
+| tessdata (best/fast/legacy) | Tidak ada bahasa Balinese (`ban`) | Harus dilatih sendiri. |
+
+Catatan pendukung: Yuadi dkk., *A Benchmark Study of Classical and U-Net ResNet34 Methods for Binarization of Balinese Palm Leaf Manuscripts*,
+Heritage 8(8):337, 2025 (https://doi.org/10.3390/heritage8080337): Sauvola unggul di antara sepuluh metode ambang pada lontar Bali, sesuai pilihan `lib/cv.ts`.
+
+Jalur yang disarankan: (1) minta AMADI_LontarSet ke penulis dan hubungi pengelola Readbali; (2) kumpulkan data latih sendiri dari Studio
+(potongan baris + transliterasi yang sudah diverifikasi, dengan persetujuan pengguna); (3) fine-tune model baris-ke-teks (TrOCR/CRNN).
