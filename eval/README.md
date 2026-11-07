@@ -23,3 +23,20 @@ Uji kecil (bukan evaluasi formal): satu baris aksara **cetak** (font Noto Sans B
 Kesimpulan: model bahasa umum tidak dapat membaca aksara Bali dengan andal. Fitur "Baca Baris (AI, draf)" memakai tabel rujukan, tiga pembacaan per baris,
 dan hanya mempertahankan bagian yang konsisten (sisanya `[?]`; baris dengan konsistensi < 30% dikosongkan). Ini membantu sebagai draf, bukan pengganti
 pembaca aksara. Peningkatan sungguhan membutuhkan model baris-ke-teks yang dilatih pada data lontar (lihat docs/REFERENSI.md).
+
+## Tolok ukur strategi pembacaan (7 Nov 2026, baris aksara CETAK dengan kunci jawaban)
+
+6 baris uji (font Noto Sans Balinese, latar menyerupai daun, sedikit blur), 1 pembacaan per baris, Opus 5.5 effort rendah.
+CER = jarak edit karakter Latin (tanpa spasi, diakritik, dan tanda [?]) / panjang kunci. Makin kecil makin baik.
+
+| Strategi | CER |
+|---|---|
+| Tanpa tabel rujukan | 0,52 |
+| Tabel rujukan dasar | 0,18 |
+| Tabel rujukan lengkap (gantungan, vokal, tanda) | 0,14 |
+| Tabel lengkap + 4 contoh bergambar dengan jawaban | **0,12** |
+
+Strategi terakhir dipakai di `/api/studio/read-lines` (2 pembacaan per ubin, konsensus, prefix di-cache).
+Catatan: ini teks cetak, bukan tulisan tangan di lontar; akurasi lontar nyata jauh lebih rendah (pada foto lontar uji, baris pertama
+terbaca plausibel, baris lain konsistensi 13-39%). Enam baris adalah sampel kecil. Langkah berikutnya yang paling berdampak: ganti contoh
+bergambar dari font dengan potongan lontar nyata yang sudah disetujui (data latih), supaya jurang domain mengecil.

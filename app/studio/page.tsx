@@ -15,7 +15,7 @@ import PrintCertificate from "@/components/PrintCertificate";
 import CropSelector from "@/components/CropSelector";
 import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
 import { segmentLines } from "@/lib/lines";
-import { referenceChart } from "@/lib/glyphChart";
+import { referenceChart, exampleShots } from "@/lib/glyphChart";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -208,8 +208,8 @@ export default function StudioPage() {
         const step = r.w / n, over = step * 0.12;
         return Array.from({ length: n }, (_, t) => ({ x: Math.max(0, r.x + t * step - over), y: r.y, w: Math.min(step + 2 * over, 1 - Math.max(0, r.x + t * step - over)), h: r.h }));
       };
-      const [chart, crops] = await Promise.all([referenceChart(), Promise.all(idx.map((i) => Promise.all(tileRects(lineRects[i]).map((t) => cropImage(image, t, 1600, 200)))))]);
-      const res = await fetch("/api/studio/read-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, lines: crops }) });
+      const [chart, shots, crops] = await Promise.all([referenceChart(), exampleShots(), Promise.all(idx.map((i) => Promise.all(tileRects(lineRects[i]).map((t) => cropImage(image, t, 1600, 200)))))]);
+      const res = await fetch("/api/studio/read-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, shots, lines: crops }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Gagal membaca baris."); setReading(false); return; }
       const lines = analysis.lines.map((l, k) => {
@@ -220,7 +220,7 @@ export default function StudioPage() {
       idx.forEach((k, n) => { marks[k] = data.lines[n].agreement; });
       setAiOriginal((o) => { const n2 = { ...o }; idx.forEach((k, n) => { n2[k] = data.lines[n].latin; }); return n2; });
       setAiLines(marks);
-      if (data.lines.every((l: { latin: string }) => !l.latin)) setError("AI tidak cukup yakin untuk membaca baris-baris ini (biasanya karena resolusi foto rendah). Coba foto yang lebih tajam, area lebih ketat, atau isi manual.");
+      if (data.lines.every((l: { latin: string }) => !l.latin)) setError("AI tidak cukup yakin untuk membaca baris-baris ini (foto kurang tajam atau tulisan terlalu pudar). Coba foto yang lebih tajam, area lebih ketat, atau isi manual.");
       setAnalysis({ ...analysis, lines, unicode_transcription: lines.map((l) => l.unicode).join("\n"), latin_transliteration: lines.map((l) => l.latin).join("\n") });
       setEdited(true);
     } catch { setError("Gagal terhubung ke server."); }
@@ -584,7 +584,7 @@ export default function StudioPage() {
                 </div>
                 {Object.keys(aiLines).length > 0 && (
                   <p className="text-xs rounded-xl bg-amberink-50 border border-amberink-200 text-amberink-800 px-3 py-2.5 leading-relaxed">
-                    <b>Draf AI per baris, belum terverifikasi.</b> Tiap ubin dibaca tiga kali; hanya suku kata yang konsisten dipertahankan, selebihnya <code>[?]</code>. Konsistensi di bawah ±60% berarti bacaan besar kemungkinan keliru: periksa setiap baris terhadap potongan gambarnya, lalu perbaiki.
+                    <b>Draf AI per baris, belum terverifikasi.</b> Tiap ubin dibaca dua kali; hanya suku kata yang konsisten dipertahankan, selebihnya <code>[?]</code>. Konsistensi di bawah ±60% berarti bacaan besar kemungkinan keliru: periksa setiap baris terhadap potongan gambarnya, lalu perbaiki.
                   </p>
                 )}
                 {analysis.warnings.map((w, i) => (
