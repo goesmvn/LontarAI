@@ -3,7 +3,7 @@
 Platform web untuk **mendigitalkan, membaca (draf AI), dan mengarsipkan naskah lontar Bali**, dengan pilihan simpan **Private Vault** atau **Arsip Publik** oleh masyarakat. Dibuat untuk Bali DigiFest 2026 (Build with AI, Solve for Bali). Spesifikasi lengkap: [PRD.md](PRD.md).
 
 ## Fitur yang sudah ada
-- **Studio Transkripsi:** unggah foto lempir (atau pakai sampel Krakah Sanggaraha) → draf aksara Bali Unicode, transliterasi, terjemahan ID/EN, kategori, dan konteks. Hasil per baris dapat dikoreksi; baris ragu diberi penanda dan `[?]`.
+- **Studio Transkripsi (manual-first):** unggah foto lempir (atau pakai sampel Krakah Sanggaraha), zoom per baris, lalu ketik transliterasi Latin; **aksara Bali Unicode dibuat otomatis** oleh konverter berbasis aturan (`lib/aksara.ts`, uji: `node scripts/test-aksara.mjs`) dan dapat diubah. **Bantuan AI opsional** (berbayar): menebak jumlah baris, blok, dan rumpun; belum dapat membaca aksara dengan andal.
 - **Simpan privat atau publik:**
   - *Private Vault* (default): hanya pemilik.
   - *Arsip Publik*: butuh persetujuan eksplisit; lokasi dibulatkan ke area ±1 km; nama pemilik opsional.
@@ -39,6 +39,8 @@ Supabase: jalankan [supabase/schema.sql](supabase/schema.sql), buat bucket `vaul
 Tanpa `ANTHROPIC_API_KEY`, Studio menampilkan pesan dan mode isi manual. Tanpa Supabase, simpan dinonaktifkan.
 
 ## Catatan jujur
+- **Uji nyata (Nov 2026):** Claude Opus 5.5 pada foto sampel (juga pada potongan satu blok yang diperbesar 4×) menandai hampir semua baris tak terbaca dan hanya mengenali tata letak dan tanda baca. Karena itu Studio dibuat manual-first; AI tidak dipanggil kecuali dipilih.
+- Aturan konversi Latin→aksara mengikuti konvensi umum (adeg-adeg, cecek/surang/bisah, gantungan lewat virama) dan **perlu ditinjau ahli aksara Bali** sebelum dianggap baku.
 - Kemampuan model umum membaca aksara Bali belum terbukti andal. Semua hasil berlabel **Draf AI**; evaluasi CER terencana (PRD §9).
 
 ## Kredit

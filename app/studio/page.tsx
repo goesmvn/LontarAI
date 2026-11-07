@@ -8,6 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 import { resizeToJpeg } from "@/lib/image";
 import { enhanceImage } from "@/lib/cv";
+import { latinToBali } from "@/lib/aksara";
 import { buildExport, downloadJson } from "@/lib/export";
 import PrintCertificate from "@/components/PrintCertificate";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
@@ -20,9 +21,9 @@ const MapPicker = dynamic(() => import("@/components/MapPicker"), {
 
 type Line = AnalysisResult["lines"][number];
 
-const emptyAnalysis = (): AnalysisResult => ({
+const emptyAnalysis = (n = 4): AnalysisResult => ({
   category: "lainnya",
-  lines: [{ index: 1, block: "penuh", unicode: "", latin: "", confidence: 0 }],
+  lines: Array.from({ length: n }, (_, k) => ({ index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 })),
   translation: { indonesian: "", english: "" },
   philosophical_context: "",
   confidence_score: 0,
@@ -47,7 +48,10 @@ export default function StudioPage() {
   const [edited, setEdited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"latin" | "bali" | "terjemahan">("latin");
+  const [tab, setTab] = useState<"teks" | "terjemahan">("teks");
+  const [zoom, setZoom] = useState(100);
+  const [manualUnicode, setManualUnicode] = useState<Set<number>>(new Set());
+  const [showGuide, setShowGuide] = useState(false);
   const [activeLine, setActiveLine] = useState<number | null>(null);
 
   // save form
@@ -100,7 +104,9 @@ export default function StudioPage() {
       setEnhanced(false);
       setSource("asli");
       setSaved(null);
-      analyze(img);
+      setAnalysis(null);
+      setManualUnicode(new Set());
+      setZoom(100);
     } catch {
       setError("Gagal membaca gambar.");
     }
@@ -127,7 +133,7 @@ export default function StudioPage() {
   };
 
   const reset = () => {
-    setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false);
+    setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
   };
 
   const updateLine = (i: number, patch: Partial<Line>) => {
@@ -139,6 +145,41 @@ export default function StudioPage() {
       latin_transliteration: lines.map((l) => l.latin).join("\n"),
     });
     setEdited(true);
+  };
+
+  const renumber = (lines: Line[]) => lines.map((l, k) => ({ ...l, index: k + 1 }));
+  const commitLines = (lines: Line[]) => {
+    if (!analysis) return;
+    setAnalysis({
+      ...analysis, lines,
+      unicode_transcription: lines.map((l) => l.unicode).join("\n"),
+      latin_transliteration: lines.map((l) => l.latin).join("\n"),
+    });
+    setEdited(true);
+  };
+  const changeLatin = (i: number, latin: string) => {
+    if (!analysis) return;
+    const auto = !manualUnicode.has(i);
+    commitLines(analysis.lines.map((l, idx) => (idx === i ? { ...l, latin, unicode: auto ? latinToBali(latin) : l.unicode } : l)));
+  };
+  const changeUnicode = (i: number, unicode: string) => {
+    if (!analysis) return;
+    setManualUnicode(new Set(manualUnicode).add(i));
+    commitLines(analysis.lines.map((l, idx) => (idx === i ? { ...l, unicode } : l)));
+  };
+  const addLine = () => analysis && commitLines(renumber([...analysis.lines, { index: 0, block: "penuh", unicode: "", latin: "", confidence: 0 }]));
+  const removeLine = (i: number) => {
+    if (!analysis) return;
+    commitLines(renumber(analysis.lines.filter((_, k) => k !== i)));
+    setManualUnicode(new Set());
+  };
+  const insertChar = (ch: string) => {
+    const el = document.activeElement as HTMLTextAreaElement | null;
+    if (!el || el.dataset.latin === undefined) return;
+    const i = Number(el.dataset.latin);
+    const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a;
+    changeLatin(i, el.value.slice(0, a) + ch + el.value.slice(b));
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + ch.length, a + ch.length); });
   };
 
   const useMyLocation = () => {
@@ -209,7 +250,7 @@ export default function StudioPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-terra-800">Studio Transkripsi</h1>
       <p className="text-stone-600 text-sm mt-1 mb-6">
-        Foto lempir lontar → draf transkripsi AI → koreksi Anda → simpan privat atau bagikan ke arsip publik.
+        Foto lempir lontar → transkripsi (manual, dengan bantuan konversi aksara dan AI opsional) → simpan privat atau bagikan ke arsip publik.
       </p>
 
       {!image && (
@@ -243,25 +284,46 @@ export default function StudioPage() {
                 {enhancing ? "Memproses…" : "Enhanced (Sauvola)"}
               </label>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-stone-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto min-w-full"
-                style={{ minWidth: 700 }} />
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <span>Zoom</span>
+              <input type="range" min={100} max={500} step={25} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="flex-1" aria-label="Zoom gambar" />
+              <span className="w-10 text-right">{zoom}%</span>
             </div>
-            <p className="text-xs text-stone-500">Geser ke samping untuk melihat seluruh lempir. Enhanced = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
+            <div className="overflow-auto max-h-[70vh] rounded-xl border border-stone-200 bg-stone-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto"
+                style={{ width: `${zoom}%` }} />
+            </div>
+            <p className="text-xs text-stone-500">Perbesar lalu geser untuk membaca per baris. Enhanced = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
             <div className="flex flex-wrap gap-4 text-sm">
               <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
               {enhancedImg && !loading && (
                 <button type="button" onClick={source === "enhanced" ? () => { setSource("asli"); image && analyze(image); } : reanalyzeEnhanced} className="text-terra-700 underline">
-                  {source === "enhanced" ? "Analisis ulang dengan gambar asli" : "Analisis ulang dengan versi Enhanced"}
+                  {source === "enhanced" ? "Bantuan AI dengan gambar asli" : "Bantuan AI dengan versi Enhanced"}
                 </button>
               )}
             </div>
-            {analysis && <p className="text-xs text-stone-400">Analisis terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
+            {analysis && analysis.model !== "manual" && <p className="text-xs text-stone-400">Bantuan AI terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
           </div>
 
           {/* Right: results */}
           <div className="space-y-4 min-w-0">
+            {!analysis && !loading && !error && (
+              <div className="rounded-2xl border border-terra-200 bg-amber-50/50 p-5 space-y-3">
+                <h2 className="font-semibold text-stone-800">Bagaimana ingin memulai?</h2>
+                <button type="button" onClick={() => { setAnalysis(emptyAnalysis()); }}
+                  className="w-full text-left rounded-xl border border-terra-400 bg-white p-3 hover:bg-amber-50">
+                  <b>✍ Isi manual</b> <span className="text-xs text-stone-500">(disarankan, gratis)</span>
+                  <p className="text-sm text-stone-600">Ketik transliterasi Latin per baris; aksara Bali dibuat otomatis oleh aturan konversi dan dapat Anda ubah.</p>
+                </button>
+                <button type="button" onClick={() => image && analyze(image)}
+                  className="w-full text-left rounded-xl border border-stone-300 bg-white p-3 hover:bg-stone-50">
+                  <b>🤖 Bantuan AI</b> <span className="text-xs text-stone-500">(opsional, berbayar per pemakaian)</span>
+                  <p className="text-sm text-stone-600">AI menebak jumlah baris, blok, dan rumpun naskah. AI belum dapat membaca aksara Bali dengan andal; transkripsi tetap perlu Anda isi.</p>
+                </button>
+              </div>
+            )}
+
             {loading && (
               <div className="flex flex-col items-center gap-3 py-10">
                 <div className="w-10 h-10 border-4 border-terra-500 border-t-transparent rounded-full animate-spin" />
@@ -283,11 +345,13 @@ export default function StudioPage() {
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">
-                    {edited ? "Dikoreksi manusia" : "Draf AI"}
+                    {analysis.model === "manual" ? "Transkripsi manual" : edited ? "Dikoreksi manusia" : "Draf AI"}
                   </span>
-                  <span className={`text-xs ${band(analysis.confidence_score)[1]}`}>
-                    Keyakinan (perkiraan): {band(analysis.confidence_score)[0]}
-                  </span>
+                  {analysis.model !== "manual" && analysis.confidence_score > 0 && (
+                    <span className={`text-xs ${band(analysis.confidence_score)[1]}`}>
+                      Keyakinan (perkiraan): {band(analysis.confidence_score)[0]}
+                    </span>
+                  )}
                   <span className="text-xs text-stone-500">{CATEGORY_LABELS[analysis.category]}</span>
                 </div>
                 {analysis.warnings.map((w, i) => (
@@ -295,7 +359,7 @@ export default function StudioPage() {
                 ))}
 
                 <div className="flex gap-1 border-b border-stone-200">
-                  {([["latin", "Transliterasi"], ["bali", "Aksara Bali"], ["terjemahan", "Terjemahan & Konteks"]] as const).map(([id, label]) => (
+                  {([["teks", "Transkripsi"], ["terjemahan", "Terjemahan & Konteks"]] as const).map(([id, label]) => (
                     <button key={id} type="button" onClick={() => setTab(id)}
                       className={`px-3 py-2 text-sm -mb-px border-b-2 ${tab === id ? "border-terra-600 text-terra-800 font-semibold" : "border-transparent text-stone-500"}`}>
                       {label}
@@ -303,23 +367,49 @@ export default function StudioPage() {
                   ))}
                 </div>
 
-                {tab !== "terjemahan" ? (
+                {tab === "teks" ? (
                   <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-1" onMouseDown={(e) => e.preventDefault()}>
+                      <span className="text-xs text-stone-500 mr-1">Sisipkan:</span>
+                      {["ā", "ī", "ū", "ĕ", "é", "ṭ", "ḍ", "ṇ", "ś", "ṣ"].map((ch) => (
+                        <button key={ch} type="button" onClick={() => insertChar(ch)}
+                          className="w-7 h-7 rounded border border-stone-300 bg-white text-sm hover:bg-amber-50">{ch}</button>
+                      ))}
+                      <button type="button" onClick={() => setShowGuide(!showGuide)} className="ml-2 text-xs text-terra-700 underline">
+                        {showGuide ? "Tutup panduan" : "Panduan ejaan"}
+                      </button>
+                    </div>
+                    {showGuide && (
+                      <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs text-stone-600 space-y-1">
+                        <p><b>Vokal:</b> a ā i ī u ū · e/é (taleng) · ĕ (pepet) · o · ai · au</p>
+                        <p><b>Konsonan:</b> k kh g gh ng c ch j jh ny ṭ ṭh ḍ ḍh ṇ t th d dh n p ph b bh m y r l w ś ṣ s h</p>
+                        <p><b>Tanda:</b> koma (,) = carik · titik (.) atau | = pasalinan</p>
+                        <p>Konsonan tanpa vokal di akhir suku: <b>ng</b>→cecek, <b>r</b>→surang, <b>h</b>→bisah; lainnya adeg-adeg. Konsonan beruntun membentuk gantungan. Hasil adalah pratinjau aturan konversi, bukan pengganti pemeriksaan pembaca aksara.</p>
+                      </div>
+                    )}
                     {analysis.lines.map((l, i) => (
                       <div key={i} onFocus={() => setActiveLine(i)}
-                        className={`rounded-lg border p-2 ${activeLine === i ? "border-terra-400 bg-amber-50/50" : "border-stone-200"}`}>
-                        <div className="flex justify-between text-xs text-stone-500 mb-1">
-                          <span>Baris {l.index}{l.block !== "penuh" ? ` · blok ${l.block}` : ""}</span>
-                          <span className={band(l.confidence)[1]}>{band(l.confidence)[0]}</span>
+                        className={`rounded-lg border p-2 space-y-1 ${activeLine === i ? "border-terra-400 bg-amber-50/50" : "border-stone-200"}`}>
+                        <div className="flex items-center justify-between text-xs text-stone-500">
+                          <span>Baris {l.index}</span>
+                          <span className="flex items-center gap-2">
+                            {analysis.model !== "manual" && l.confidence > 0 && <span className={band(l.confidence)[1]}>{band(l.confidence)[0]}</span>}
+                            <select value={l.block} onChange={(e) => commitLines(analysis.lines.map((x, k) => (k === i ? { ...x, block: e.target.value as Line["block"] } : x)))}
+                              className="border border-stone-200 rounded px-1 py-0.5 bg-white" aria-label="Blok">
+                              <option value="penuh">penuh</option><option value="kiri">kiri</option><option value="kanan">kanan</option>
+                            </select>
+                            <button type="button" onClick={() => removeLine(i)} className="text-red-500 hover:underline" aria-label={`Hapus baris ${l.index}`}>hapus</button>
+                          </span>
                         </div>
-                        <textarea rows={2} value={tab === "latin" ? l.latin : l.unicode}
-                          onChange={(e) => updateLine(i, tab === "latin" ? { latin: e.target.value } : { unicode: e.target.value })}
-                          className={`w-full rounded border border-stone-200 px-2 py-1 text-sm resize-y ${l.confidence < 0.45 ? "bg-amber-50" : ""}`} />
+                        <textarea rows={1} data-latin={i} value={l.latin} placeholder="Transliterasi Latin, mis. ong awighnamastu"
+                          onChange={(e) => changeLatin(i, e.target.value)}
+                          className="w-full rounded border border-stone-200 px-2 py-1 text-sm resize-y" />
+                        <textarea rows={1} value={l.unicode} placeholder="Aksara Bali (otomatis dari Latin)"
+                          onChange={(e) => changeUnicode(i, e.target.value)}
+                          className="font-bali w-full rounded border border-stone-200 px-2 py-1 text-lg resize-y bg-stone-50" />
                       </div>
                     ))}
-                    {analysis.lines.length === 0 && (
-                      <button type="button" onClick={() => setAnalysis(emptyAnalysis())} className="text-sm text-terra-700 underline">Tambah baris manual</button>
-                    )}
+                    <button type="button" onClick={addLine} className="text-sm text-terra-700 underline">+ Tambah baris</button>
                   </div>
                 ) : (
                   <div className="space-y-3 text-sm">
@@ -354,7 +444,9 @@ export default function StudioPage() {
                   </button>
                 </div>
                 <p className="text-xs text-stone-500">
-                  Hasil AI adalah draf dan dapat keliru, terutama pada aksara pudar. Bagian bertanda [?] tidak terbaca. Periksa bersama pembaca aksara sebelum dipakai sebagai rujukan.
+                  {analysis.model === "manual"
+                    ? "Aksara Bali dibuat dari ejaan Latin Anda memakai aturan konversi dan dapat keliru pada kasus khusus (mis. gantungan atau pepet). Periksa bersama pembaca aksara sebelum dipakai sebagai rujukan."
+                    : "Hasil AI adalah draf dan dapat keliru, terutama pada aksara pudar. Bagian bertanda [?] tidak terbaca. Periksa bersama pembaca aksara sebelum dipakai sebagai rujukan."}
                 </p>
               </>
             )}

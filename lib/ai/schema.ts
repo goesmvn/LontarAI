@@ -36,18 +36,29 @@ export type AnalysisResult = RawAnalysis & {
 const BALI_BLOCK = /[ᬀ-᭿]/;
 const ALLOWED_OTHER = /[\s -/:-@\[\]?|.,]/;
 
+// A line with no real glyph content: only [?], punctuation, or whitespace.
+const isJunk = (s: string) => s.replace(/\[\?\]|[\s\u1B5A-\u1B5F.,;:|()\-]/g, "") === "";
+
 export function postProcess(raw: RawAnalysis, model: string, promptVersion: string): AnalysisResult {
   const warnings = [...raw.warnings];
-  const lines = raw.lines.map((l) => ({ ...l, unicode: l.unicode.normalize("NFC") }));
+  let cleared = 0;
+  const lines = raw.lines.map((l) => {
+    const unicode = l.unicode.normalize("NFC");
+    if (isJunk(unicode) && isJunk(l.latin)) {
+      cleared++;
+      return { ...l, unicode: "", latin: "", confidence: 0 };
+    }
+    return { ...l, unicode };
+  });
+  if (cleared > 0 && cleared === lines.length) {
+    warnings.push("AI tidak dapat membaca aksara pada foto ini. Layout terdeteksi; isi transkripsi secara manual.");
+  }
 
   const stray = lines.some((l) =>
     Array.from(l.unicode).some((ch) => !BALI_BLOCK.test(ch) && !ALLOWED_OTHER.test(ch))
   );
   if (stray) warnings.push("Ada karakter di luar blok aksara Bali; periksa transkripsi.");
   if (lines.length === 0) warnings.push("Tidak ada baris teks yang terdeteksi.");
-  if (lines.length > 0 && !lines.some((l) => BALI_BLOCK.test(l.unicode))) {
-    warnings.push("Tidak ada aksara Bali pada hasil transkripsi.");
-  }
 
   return {
     ...raw,

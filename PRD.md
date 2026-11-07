@@ -407,6 +407,12 @@ Klaim v1.0 bahwa "Google Lens tidak memahami aksara Bali pada lontar" dihapus ke
 
 ---
 
+## 14b. Keputusan Berbasis Uji Nyata (Nov 2026)
+
+Uji Claude Opus 5.5 (vision) pada foto sampel Krakah Sanggaraha: tata letak (2 lempir, 16 baris, blok kiri/kanan, abaikan stempel/label) terbaca benar, tetapi aksara tidak dapat dibaca andal, bahkan pada potongan satu blok yang diperbesar 4×; model menandai `[?]` dan tidak mengarang. Konsekuensi: **Studio manual-first** (FR-1.6 diturunkan menjadi saran opsional): editor baris + konverter Latin→aksara berbasis aturan + zoom; AI hanya untuk tata letak/rumpun dan dipanggil atas pilihan pengguna. Jalur peningkatan: evaluasi model lain (mis. Fable 5.1), few-shot dari transkripsi terverifikasi, atau model OCR khusus aksara Bali dari data terverifikasi (dengan consent).
+
+---
+
 ## 15. Status Implementasi (reset)
 
 Status per 2026-11-07: MVP P0 sebagian besar sudah ada (lihat centang di bawah); belum diuji dengan kunci AI/Supabase sungguhan. Repositori berisi Bali Bersih (Next.js 14, Supabase, Leaflet, OpenAI) dengan fondasi yang dapat dipakai ulang: struktur App Router, Tailwind, Leaflet, helper Supabase, serta validasi dan rate limit di `lib/validation.ts`.
