@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AiUnavailableError, analyzeManuscript } from "@/lib/ai/provider";
+import { explainAiError } from "@/lib/ai/client";
 import { clientIp, rateLimit, validateImageDataUrl } from "@/lib/validation";
 
 export const maxDuration = 60;
@@ -34,11 +35,8 @@ export async function POST(request: NextRequest) {
     }
     // Log the cause server-side (never returned to the client).
     console.error("[analyze] gagal:", e instanceof Error ? `${e.name}: ${e.message}` : e);
-    if (e instanceof Error && /credit balance/i.test(e.message)) {
-      return NextResponse.json(
-        { error: "Kredit layanan AI sedang habis. Hubungi pengelola, atau isi transkripsi secara manual.", manual: true },
-        { status: 503 }
-      );
+    if (e instanceof Error && /credit|billing|balance|insufficient|payment|401|403|authentication|unauthor|api key/i.test(e.message)) {
+      return NextResponse.json({ error: `${explainAiError(e.message)} Isi transkripsi secara manual, atau hubungi pengelola.`, manual: true }, { status: 503 });
     }
     return NextResponse.json(
       { error: "Gagal menganalisis naskah. Coba lagi atau isi manual.", manual: true },

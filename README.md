@@ -31,15 +31,15 @@ Deteksi otomatis lempir/baris, deskew, tiling untuk strip sangat panjang, multi-
 ## Menjalankan
 ```bash
 npm install
-cp .env.example .env.local   # isi ANTHROPIC_API_KEY dan kunci Supabase
+cp .env.example .env.local   # isi kunci AI (OPENCODE_API_KEY atau ANTHROPIC_API_KEY) dan kunci Supabase
 node --env-file=.env.local scripts/check-setup.mjs   # cek kunci, tabel, RLS, bucket
 npm run dev                  # http://localhost:3000
 ```
-AI: default **Claude** (`claude-opus-5-5`, streaming, effort `high`, fallback server-side). Ganti model lewat `LONTAR_AI_MODEL`; OpenAI tersedia sebagai alternatif dengan `AI_PROVIDER=openai`.
+AI: pilih penyedia lewat `AI_PROVIDER`: `anthropic` (API Anthropic langsung), `opencode` (OpenCode Console, model Claude lewat gateway kompatibel Anthropic; kunci `OPENCODE_API_KEY`), atau `openai` (hanya analisis). Model default `claude-opus-5-5`, ganti lewat `LONTAR_AI_MODEL`. Catatan: model gratis OpenCode hanya berlaku di aplikasi OpenCode; dari aplikasi ini perlu kredit berbayar atau paket Go. Semua panggilan AI melewati `lib/ai/client.ts`. Periksa konfigurasi: `node --env-file=.env.local scripts/check-setup.mjs`.
 
 Supabase: jalankan [supabase/schema.sql](supabase/schema.sql), buat bucket `vault` (private) dan `archive` (public), aktifkan Email auth (magic link) dan tambahkan URL aplikasi ke Redirect URLs.
 
-Tanpa `ANTHROPIC_API_KEY`, Studio menampilkan pesan dan mode isi manual. Tanpa Supabase, simpan dinonaktifkan.
+Tanpa kunci AI, Studio menampilkan pesan dan mode isi manual. Tanpa Supabase, simpan dinonaktifkan.
 
 ## Catatan jujur
 - **Uji nyata (Nov 2026):** Claude Opus 5.5 pada foto sampel (juga pada potongan satu blok yang diperbesar 4×) menandai hampir semua baris tak terbaca dan hanya mengenali tata letak dan tanda baca. Karena itu Studio dibuat manual-first; AI tidak dipanggil kecuali dipilih.

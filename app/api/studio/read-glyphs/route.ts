@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { clientIp, rateLimit } from "@/lib/validation";
+import { aiConfigured, explainAiError, isClaudeFamily, providerLabel, type ContentBlock } from "@/lib/ai/client";
+import { claudeMessage } from "@/lib/ai/client";
 
 export const maxDuration = 120;
 const DATA_URL = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
@@ -26,7 +27,8 @@ function parse(text: string, count: number): string[][] {
 }
 
 export async function POST(request: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "Bantuan AI belum dikonfigurasi.", manual: true }, { status: 503 });
+  if (!aiConfigured()) return NextResponse.json({ error: "Bantuan AI belum dikonfigurasi.", manual: true }, { status: 503 });
+  if (!isClaudeFamily()) return NextResponse.json({ error: `Pembacaan karakter belum didukung untuk penyedia ${providerLabel()}. Gunakan AI_PROVIDER=anthropic atau opencode.`, manual: true }, { status: 503 });
   if (!rateLimit(`readglyphs:${clientIp(request.headers)}`, 6, 60_000)) return NextResponse.json({ error: "Terlalu banyak permintaan. Coba lagi sebentar." }, { status: 429 });
 
   const body = (await request.json().catch(() => null)) as { chart?: string; shots?: { image: string; answers: string[] }[]; sheets?: { image: string; count: number }[] } | null;
@@ -40,37 +42,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Gambar tidak valid atau terlalu besar." }, { status: 400 });
   }
 
-  const client = new Anthropic({ timeout: 90_000, maxRetries: 1 });
-  const model = process.env.LONTAR_AI_MODEL || "claude-opus-5-5";
-  const img = (m: RegExpExecArray): Anthropic.Beta.BetaContentBlockParam => ({ type: "image", source: { type: "base64", media_type: m[1] as "image/png", data: m[2] } });
+  const img = (m: RegExpExecArray, extra: ContentBlock = {}): ContentBlock => ({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] }, ...extra });
   // Shared prefix (chart + worked examples) is identical for every call: mark it cacheable.
   const shots = (Array.isArray(body.shots) ? body.shots.slice(0, 4) : []).filter((x) => typeof x?.image === "string" && Array.isArray(x.answers) && x.answers.length <= MAX_CELLS);
   const shotImgs = shots.map((x) => DATA_URL.exec(x.image));
   if (shotImgs.some((m) => !m)) return NextResponse.json({ error: "Contoh tidak valid." }, { status: 400 });
-  const prefix: Anthropic.Beta.BetaContentBlockParam[] = [
+  const prefix: ContentBlock[] = [
     { type: "text", text: "Gambar 1 (TABEL RUJUKAN):" },
-    { type: "image", source: { type: "base64", media_type: chart[1] as "image/png", data: chart[2] } },
-    ...shots.flatMap((x, k): Anthropic.Beta.BetaContentBlockParam[] => [
+    img(chart),
+    ...shots.flatMap((x, k): ContentBlock[] => [
       { type: "text", text: `Contoh ${k + 1} (potongan bernomor, lalu jawaban yang benar):` },
-      { type: "image", source: { type: "base64", media_type: shotImgs[k]![1] as "image/png", data: shotImgs[k]![2] } },
+      img(shotImgs[k]!),
       { type: "text", text: x.answers.map((a, i) => `${i + 1}: ${String(a).slice(0, 24)}`).join("\n") },
     ]),
   ];
-  prefix[prefix.length - 1] = { ...(prefix[prefix.length - 1] as Anthropic.Beta.BetaTextBlockParam), cache_control: { type: "ephemeral" } };
+  prefix[prefix.length - 1] = { ...prefix[prefix.length - 1], cache_control: { type: "ephemeral" } };
 
   let failed = 0, total = 0, lastError = "";
   const readOnce = async (sheet: RegExpExecArray, count: number): Promise<string[][]> => {
     total++;
     try {
-      const msg = await client.beta.messages.stream({
-        model, max_tokens: 1500, output_config: { effort: "low" },
-        messages: [{ role: "user", content: [...prefix, { type: "text", text: `Potongan yang harus dibaca (${count} kotak):` }, img(sheet), { type: "text", text: PROMPT }] }],
-      }).finalMessage();
-      const text = msg.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("");
+      const { text } = await claudeMessage({
+        maxTokens: 1500, effort: "low", timeoutMs: 90_000,
+        content: [...prefix, { type: "text", text: `Potongan yang harus dibaca (${count} kotak):` }, img(sheet), { type: "text", text: PROMPT }],
+      });
       if (process.env.NODE_ENV !== "production") console.log("[read-glyphs] mentah:", JSON.stringify(text.slice(0, 260)));
       return parse(text, count);
     } catch (e) {
-      failed++; lastError = String((e as Error).message).slice(0, 200); console.error("[read-glyphs] gagal:", lastError);
+      failed++; lastError = String((e as Error).message).slice(0, 300); console.error("[read-glyphs] gagal:", lastError);
       return Array.from({ length: count }, () => []);
     }
   };
@@ -86,8 +85,7 @@ export async function POST(request: NextRequest) {
   }));
 
   if (failed >= total * 0.8) {
-    const credit = /credit|billing|balance/i.test(lastError);
-    return NextResponse.json({ error: credit ? "Kredit API Anthropic habis atau penagihan bermasalah." : `Pemanggilan AI gagal (${failed}/${total}). ${lastError}`, manual: true }, { status: 502 });
+    return NextResponse.json({ error: `${explainAiError(lastError)} (${failed}/${total} panggilan gagal)`, manual: true }, { status: 502 });
   }
-  return NextResponse.json({ sheets: results, runs: RUNS, model });
+  return NextResponse.json({ sheets: results, runs: RUNS, provider: providerLabel() });
 }
