@@ -13,10 +13,11 @@ const MIN = 0.02;
 
 /** Image with a draggable/resizable selection rectangle (normalised coordinates). */
 export default function CropSelector({
-  src, zoom, active, rect, onRect, suggestions, onPickSuggestion, onLoad,
+  src, zoom, active, rect, onRect, suggestions, onPickSuggestion, onLoad, lines, activeLine,
 }: {
   src: string; zoom: number; active: boolean; rect: Rect | null; onRect: (r: Rect | null) => void;
   suggestions?: Rect[]; onPickSuggestion?: (r: Rect) => void; onLoad?: (w: number, h: number) => void;
+  lines?: Rect[]; activeLine?: number | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -82,6 +83,11 @@ export default function CropSelector({
           className="absolute border-2 border-dashed border-amber-400 bg-amber-300/10 hover:bg-amber-300/25 rounded-sm">
           <span className="absolute -top-0.5 left-0 -translate-y-full px-1.5 py-0.5 rounded bg-amber-400 text-[10px] font-mono font-semibold text-stone-900">Area {i + 1}</span>
         </button>
+      ))}
+      {lines?.map((l, i) => (
+        <div key={`l${i}`} style={pct(l)} className={`absolute pointer-events-none border ${activeLine === i ? "border-primary bg-primary/15" : "border-sky-400 bg-sky-300/10"} rounded-[2px]`}>
+          <span className={`absolute -left-0.5 -top-0.5 -translate-y-full px-1 rounded text-[9px] font-mono font-semibold ${activeLine === i ? "bg-primary text-white" : "bg-sky-500 text-white"}`}>{i + 1}</span>
+        </div>
       ))}
       {rect && rect.w > 0 && rect.h > 0 && (
         <div className="absolute border-2 border-primary" style={{ ...pct(rect), boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)" }}>

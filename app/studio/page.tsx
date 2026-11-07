@@ -14,6 +14,7 @@ import { buildExport, downloadJson } from "@/lib/export";
 import PrintCertificate from "@/components/PrintCertificate";
 import CropSelector from "@/components/CropSelector";
 import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
+import { segmentLines } from "@/lib/lines";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -61,6 +62,10 @@ export default function StudioPage() {
   const [rect, setRect] = useState<Rect | null>(null);
   const [suggestions, setSuggestions] = useState<Rect[]>([]);
   const [detecting, setDetecting] = useState(false);
+  const [lineRects, setLineRects] = useState<Rect[]>([]);
+  const [lineThumbs, setLineThumbs] = useState<string[]>([]);
+  const [segmenting, setSegmenting] = useState(false);
+  const [sens, setSens] = useState(0.35);
   const [fullImage, setFullImage] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
   const [condition, setCondition] = useState<"baik" | "rapuh" | "rusak_sebagian" | "fragmentaris">("baik");
@@ -172,6 +177,21 @@ export default function StudioPage() {
     } catch { setError("Gagal mendeteksi area."); }
     setDetecting(false);
   };
+  const splitLines = async () => {
+    if (!image) return;
+    setSegmenting(true); setError(null);
+    try {
+      const rects = await segmentLines(image, hasRect ? rect : null, sens);
+      if (rects.length === 0) { setError("Baris tidak terdeteksi. Pilih area yang lebih sempit atau tambah baris manual."); setSegmenting(false); return; }
+      const thumbs = await Promise.all(rects.map((r) => cropImage(image, r, 700)));
+      setLineRects(rects); setLineThumbs(thumbs);
+      const base = analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
+      const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 });
+      setAnalysis({ ...base, lines: lines.map((l, k) => ({ ...l, index: k + 1 })) });
+      setManualUnicode(new Set());
+    } catch { setError("Gagal membagi baris."); }
+    setSegmenting(false);
+  };
   const analyzeArea = async () => {
     if (!image || !rect) return;
     try { analyze(await cropImage(viewSrc(), rect)); } catch { setError("Gagal memotong area."); }
@@ -181,17 +201,17 @@ export default function StudioPage() {
     try {
       const cropped = await cropImage(image, rect);
       if (!fullImage) setFullImage(image);
-      setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
+      setLineRects([]); setLineThumbs([]); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
       setRect(null); setSuggestions([]); setCropMode(false); setZoom(100); setDims(null);
     } catch { setError("Gagal memotong area."); }
   };
   const restoreFull = () => {
     if (!fullImage) return;
-    setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
+    setLineRects([]); setLineThumbs([]); setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
   };
 
   const reset = () => {
-    setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false);
+    setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false); setLineRects([]); setLineThumbs([]);
     setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
   };
 
@@ -231,6 +251,7 @@ export default function StudioPage() {
     if (!analysis) return;
     commitLines(renumber(analysis.lines.filter((_, k) => k !== i)));
     setManualUnicode(new Set());
+    setLineRects((r) => r.filter((_, k) => k !== i)); setLineThumbs((t) => t.filter((_, k) => k !== i));
   };
   const copy = async (what: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch {}
@@ -388,17 +409,21 @@ export default function StudioPage() {
                 <div className="relative overflow-auto max-h-[60vh] rounded-xl bg-stone-900">
                   <CropSelector src={viewSrc()} zoom={zoom} active={cropMode} rect={rect} onRect={setRect}
                     suggestions={suggestions} onPickSuggestion={(r) => { setRect(r); setSuggestions([]); }}
-                    onLoad={(w, h) => setDims({ w, h })} />
+                    onLoad={(w, h) => setDims({ w, h })} lines={lineRects} activeLine={activeLine} />
                 </div>
               </div>
               {cropMode && (
                 <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3 flex flex-wrap items-center gap-2 text-xs">
                   <span className="text-stone-600 mr-auto">
-                    {hasRect && dims ? <>Area dipilih: <b className="font-mono text-stone-900">{Math.round(rect!.w * dims.w)}×{Math.round(rect!.h * dims.h)}px</b></> : "Tarik pada gambar, atau gunakan deteksi otomatis."}
+                    {lineRects.length > 0 && <b className="text-sky-700 mr-2">{lineRects.length} baris terdeteksi.</b>}{hasRect && dims ? <>Area dipilih: <b className="font-mono text-stone-900">{Math.round(rect!.w * dims.w)}×{Math.round(rect!.h * dims.h)}px</b></> : "Tarik pada gambar, atau gunakan deteksi otomatis."}
                   </span>
                   <button type="button" onClick={autoDetect} disabled={detecting} className="px-3 py-1.5 rounded-lg bg-amberink-100 border border-amberink-200 text-amberink-700 font-medium flex items-center gap-1 disabled:opacity-50">
                     <Icon name="auto_fix_high" size={15} />{detecting ? "Mendeteksi…" : "Deteksi Area Otomatis"}
                   </button>
+                  <label className="flex items-center gap-1.5 text-[11px] text-stone-500" title="Kanan: baris samar ikut terdeteksi. Kiri: hanya baris yang jelas.">
+                    Kepekaan <input type="range" min={0.12} max={0.6} step={0.01} value={0.72 - sens} onChange={(e) => setSens(0.72 - Number(e.target.value))} className="w-20 accent-[#a83223]" />
+                  </label>
+                  <button type="button" onClick={splitLines} disabled={segmenting} className="px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-medium flex items-center gap-1 disabled:opacity-50"><Icon name="format_line_spacing" size={15} />{segmenting ? "Membagi…" : "Bagi per Baris"}</button>
                   <button type="button" onClick={applyCrop} disabled={!hasRect} className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 font-medium flex items-center gap-1 disabled:opacity-40"><Icon name="crop" size={15} /> Potong &amp; Pakai</button>
                   <button type="button" onClick={analyzeArea} disabled={!hasRect || loading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-40"><Icon name="smart_toy" size={15} /> Analisis Area (AI)</button>
                   <button type="button" onClick={() => { setRect(null); setSuggestions([]); }} disabled={!rect && !suggestions.length} className="px-2 py-1.5 text-stone-500 hover:text-primary disabled:opacity-40">Hapus pilihan</button>
@@ -541,6 +566,10 @@ export default function StudioPage() {
                           <button type="button" onClick={() => removeLine(i)} className="text-stone-400 hover:text-primary" aria-label={`Hapus baris ${l.index}`}>hapus</button>
                         </span>
                       </div>
+                      {lineThumbs[i] && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={lineThumbs[i]} alt={`Potongan baris ${l.index}`} className="w-full max-h-16 object-contain rounded-lg bg-stone-900 border border-stone-200" />
+                      )}
                       <textarea rows={1} data-latin={i} value={l.latin} placeholder="mis. ong awighnamastu"
                         onChange={(e) => changeLatin(i, e.target.value)}
                         className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-serif italic text-base text-stone-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y placeholder:text-stone-400 placeholder:not-italic" />
