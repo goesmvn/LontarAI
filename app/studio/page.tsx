@@ -201,7 +201,14 @@ export default function StudioPage() {
     try {
       const idx = lineRects.map((_, i) => i).filter((i) => !analysis.lines[i]?.latin.trim()).slice(0, 8);
       if (idx.length === 0) { setError("Semua baris sudah terisi. Kosongkan baris yang ingin dibaca AI."); setReading(false); return; }
-      const [chart, crops] = await Promise.all([referenceChart(), Promise.all(idx.map((i) => cropImage(image, lineRects[i], 1600, 160)))]);
+      // Tile each (wide, thin) line into magnified pieces: the model downsizes long images, which makes glyphs unreadable.
+      const tileRects = (r: Rect): Rect[] => {
+        const srcW = r.w * (dims?.w ?? 1000);
+        const n = Math.max(1, Math.round(srcW / 520));
+        const step = r.w / n, over = step * 0.12;
+        return Array.from({ length: n }, (_, t) => ({ x: Math.max(0, r.x + t * step - over), y: r.y, w: Math.min(step + 2 * over, 1 - Math.max(0, r.x + t * step - over)), h: r.h }));
+      };
+      const [chart, crops] = await Promise.all([referenceChart(), Promise.all(idx.map((i) => Promise.all(tileRects(lineRects[i]).map((t) => cropImage(image, t, 1600, 200)))))]);
       const res = await fetch("/api/studio/read-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, lines: crops }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Gagal membaca baris."); setReading(false); return; }
@@ -575,6 +582,11 @@ export default function StudioPage() {
                   )}
                   <span className="text-xs text-stone-500">{CATEGORY_LABELS[analysis.category]}</span>
                 </div>
+                {Object.keys(aiLines).length > 0 && (
+                  <p className="text-xs rounded-xl bg-amberink-50 border border-amberink-200 text-amberink-800 px-3 py-2.5 leading-relaxed">
+                    <b>Draf AI per baris, belum terverifikasi.</b> Tiap ubin dibaca tiga kali; hanya suku kata yang konsisten dipertahankan, selebihnya <code>[?]</code>. Konsistensi di bawah ±60% berarti bacaan besar kemungkinan keliru: periksa setiap baris terhadap potongan gambarnya, lalu perbaiki.
+                  </p>
+                )}
                 {analysis.warnings.map((w, i) => (
                   <p key={i} className="text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2">⚠ {w}</p>
                 ))}
