@@ -27,7 +27,6 @@ Tanpa `OPENAI_API_KEY`, Studio menampilkan pesan dan mode isi manual. Tanpa Supa
 
 ## Catatan jujur
 - Kemampuan model umum membaca aksara Bali belum terbukti andal. Semua hasil berlabel **Draf AI**; evaluasi CER terencana (PRD §9).
-- Bali Bersih (versi sebelumnya) diarsipkan di branch `archive/bali-bersih-v1`.
 
 ## Kredit
 Sampel naskah: Pusat Dokumentasi Dinas Kebudayaan Provinsi Bali (dipakai dengan izin). Next.js, Tailwind CSS, Supabase, Leaflet/OpenStreetMap, OpenAI API, Zod.
