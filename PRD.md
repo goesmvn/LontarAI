@@ -409,26 +409,26 @@ Klaim v1.0 bahwa "Google Lens tidak memahami aksara Bali pada lontar" dihapus ke
 
 ## 15. Status Implementasi (reset)
 
-Status per 2026-11-07: **belum ada kode LontarAI**. Repositori berisi Bali Bersih (Next.js 14, Supabase, Leaflet, OpenAI) dengan fondasi yang dapat dipakai ulang: struktur App Router, Tailwind, Leaflet, helper Supabase, serta validasi dan rate limit di `lib/validation.ts`.
+Status per 2026-11-07: MVP P0 sebagian besar sudah ada (lihat centang di bawah); belum diuji dengan kunci AI/Supabase sungguhan. Repositori berisi Bali Bersih (Next.js 14, Supabase, Leaflet, OpenAI) dengan fondasi yang dapat dipakai ulang: struktur App Router, Tailwind, Leaflet, helper Supabase, serta validasi dan rate limit di `lib/validation.ts`.
 
 ### Sprint 1 — Fondasi & data
-- [ ] Pivot repo ke LontarAI (arsipkan kode sampah di branch terpisah)
+- [x] Pivot repo ke LontarAI (kode Bali Bersih dihapus)
 - [ ] Setup Shadcn UI, tema Bali, dark/light mode, font aksara Bali
 - [ ] Izin dan persiapan 3 sampel + hasil acuan
-- [ ] Skema Supabase + RLS + view publik + bucket
+- [x] Skema Supabase + RLS + view publik + bucket (`supabase/schema.sql`)
 
 ### Sprint 2 — Studio & AI
-- [ ] Antarmuka provider AI + skema Zod + prompt v1
-- [ ] Endpoint `/api/studio/analyze` dengan validasi, rate limit, fallback
-- [ ] Viewer strip + preprocessing canvas + overlay baris
-- [ ] Editor side-by-side + badge Draf AI
+- [x] Skema Zod + prompt v1 (provider OpenAI; antarmuka multi-provider belum)
+- [x] Endpoint `/api/studio/analyze` dengan validasi, rate limit, fallback
+- [x] Viewer strip + preprocessing canvas (Sauvola) — overlay baris belum
+- [x] Editor side-by-side + badge Draf AI
 
 ### Sprint 3 — Arsip, privasi, peta
-- [ ] Auth, form provenance, map picker
-- [ ] Alur publikasi (consent, pingit, lokasi dikaburkan, buang EXIF)
-- [ ] Peta publik + filter, ekspor JSON/PDF
+- [x] Auth (magic link), form provenance, map picker
+- [x] Alur publikasi (consent, pingit, lokasi dikaburkan, buang EXIF)
+- [x] Peta publik + filter, ekspor JSON, cetak/PDF (via cetak browser); admin panel + laporan masyarakat
 
 ### Sprint 4 — Evaluasi & penyerahan
-- [ ] Set uji + laporan CER
+- [ ] Set uji + laporan CER (skrip siap: `scripts/eval.mjs`, `scripts/run-eval.mjs`; data acuan belum ada)
 - [ ] Uji keamanan: akses anonim ke data privat/pingit harus gagal
 - [ ] README (template Lampiran B), `.env.example`, video demo, tag `v1.0-submission`

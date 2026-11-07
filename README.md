@@ -17,8 +17,13 @@ Akses: email yang terdaftar di `ADMIN_EMAILS` (pisahkan koma) + `SUPABASE_SERVIC
 
 Masyarakat dapat melaporkan naskah publik lewat tombol "Laporkan naskah ini"; naskah punya halaman tautan `/archive/:slug`. Beranda menampilkan statistik nyata.
 
+## Preprocessing & ekspor
+- **Enhanced (Sauvola):** binarisasi adaptif di browser (tanpa dependensi); bisa dipakai untuk pratinjau dan **analisis ulang** agar gambar asli vs Enhanced dapat dibandingkan.
+- **Unduh JSON** (skema `lontarai.leaf/1`, tanpa koordinat presisi) dan **Cetak / Simpan PDF** (sertifikat preservasi lewat dialog cetak browser).
+- **Evaluasi:** `node scripts/run-eval.mjs` lalu `node scripts/eval.mjs` menghitung CER/WER terhadap acuan ahli; lihat [eval/README.md](eval/README.md).
+
 ## Belum ada (lihat PRD §14)
-Deteksi otomatis lempir/baris, deskew, Sauvola di server, ekspor PDF, status "terverifikasi", multi-lempir per cakepan, evaluasi CER. Peningkatan kontras di Studio hanya filter pratinjau.
+Deteksi otomatis lempir/baris, deskew, tiling untuk strip sangat panjang, multi-lempir per cakepan, data acuan dan hasil evaluasi CER.
 
 ## Menjalankan
 ```bash

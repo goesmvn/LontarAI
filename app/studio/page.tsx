@@ -7,6 +7,9 @@ import AuthPanel from "@/components/AuthPanel";
 import { getBrowserSupabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 import { resizeToJpeg } from "@/lib/image";
+import { enhanceImage } from "@/lib/cv";
+import { buildExport, downloadJson } from "@/lib/export";
+import PrintCertificate from "@/components/PrintCertificate";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -37,6 +40,9 @@ export default function StudioPage() {
   const { session } = useSession();
   const [image, setImage] = useState<string | null>(null);
   const [enhanced, setEnhanced] = useState(false);
+  const [enhancedImg, setEnhancedImg] = useState<string | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const [source, setSource] = useState<"asli" | "enhanced">("asli");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [edited, setEdited] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -90,11 +96,29 @@ export default function StudioPage() {
     try {
       const img = await resizeToJpeg(blob);
       setImage(img);
+      setEnhancedImg(null);
+      setEnhanced(false);
+      setSource("asli");
       setSaved(null);
       analyze(img);
     } catch {
       setError("Gagal membaca gambar.");
     }
+  };
+
+  const toggleEnhanced = async (on: boolean) => {
+    setEnhanced(on);
+    if (on && image && !enhancedImg) {
+      setEnhancing(true);
+      try { setEnhancedImg(await enhanceImage(image)); } catch { setEnhanced(false); setError("Gagal meningkatkan gambar."); }
+      setEnhancing(false);
+    }
+  };
+
+  const reanalyzeEnhanced = async () => {
+    if (!enhancedImg) return;
+    setSource("enhanced");
+    analyze(enhancedImg);
   };
 
   const loadSample = async () => {
@@ -215,17 +239,25 @@ export default function StudioPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-stone-800">Gambar</h2>
               <label className="text-sm text-stone-600 flex items-center gap-2">
-                <input type="checkbox" checked={enhanced} onChange={(e) => setEnhanced(e.target.checked)} />
-                Tingkatkan kontras
+                <input type="checkbox" checked={enhanced} onChange={(e) => toggleEnhanced(e.target.checked)} />
+                {enhancing ? "Memproses…" : "Enhanced (Sauvola)"}
               </label>
             </div>
             <div className="overflow-x-auto rounded-xl border border-stone-200 bg-stone-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image} alt="Foto lempir lontar" className="max-w-none h-auto min-w-full"
-                style={{ filter: enhanced ? "grayscale(1) contrast(1.8) brightness(1.05)" : undefined, minWidth: 700 }} />
+              <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto min-w-full"
+                style={{ minWidth: 700 }} />
             </div>
-            <p className="text-xs text-stone-500">Geser ke samping untuk melihat seluruh lempir. Filter kontras hanya pratinjau; berkas asli tidak diubah.</p>
-            <button type="button" onClick={reset} className="text-sm text-stone-600 underline">Ganti foto</button>
+            <p className="text-xs text-stone-500">Geser ke samping untuk melihat seluruh lempir. Enhanced = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
+              {enhancedImg && !loading && (
+                <button type="button" onClick={source === "enhanced" ? () => { setSource("asli"); image && analyze(image); } : reanalyzeEnhanced} className="text-terra-700 underline">
+                  {source === "enhanced" ? "Analisis ulang dengan gambar asli" : "Analisis ulang dengan versi Enhanced"}
+                </button>
+              )}
+            </div>
+            {analysis && <p className="text-xs text-stone-400">Analisis terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
           </div>
 
           {/* Right: results */}
@@ -311,6 +343,16 @@ export default function StudioPage() {
                     )}
                   </div>
                 )}
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <button type="button" className="px-4 py-1.5 rounded-full border border-terra-300 text-terra-800 hover:bg-terra-50"
+                    onClick={() => downloadJson(`lontarai-${Date.now()}.json`, buildExport(
+                      { title, owner, regency, village_banjar: banjar, era, source: "LontarAI Studio" }, analysis, edited))}>
+                    ⬇ Unduh JSON
+                  </button>
+                  <button type="button" className="px-4 py-1.5 rounded-full border border-terra-300 text-terra-800 hover:bg-terra-50" onClick={() => window.print()}>
+                    🖨 Cetak / Simpan PDF
+                  </button>
+                </div>
                 <p className="text-xs text-stone-500">
                   Hasil AI adalah draf dan dapat keliru, terutama pada aksara pudar. Bagian bertanda [?] tidak terbaca. Periksa bersama pembaca aksara sebelum dipakai sebagai rujukan.
                 </p>
@@ -318,6 +360,11 @@ export default function StudioPage() {
             )}
           </div>
         </div>
+      )}
+
+      {analysis && image && (
+        <PrintCertificate image={image} analysis={analysis} edited={edited}
+          meta={{ title, owner, regency, village_banjar: banjar, era }} />
       )}
 
       {/* Save panel */}
