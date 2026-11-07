@@ -9,12 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        background: "#fbf9f6",
+        foreground: "#1b1c1a",
+        // Design palette (terracotta primary on warm linen)
+        primary: { DEFAULT: "#a83223", container: "#c94a38", hover: "#8f271a" },
+        // Legacy alias kept so existing classes (terra-*) follow the new palette
         terra: {
-          50: "#fbf3ee", 100: "#f6e3d6", 200: "#ecc5ab", 300: "#e0a27c", 400: "#d27d4f",
-          500: "#c4622f", 600: "#b4532a", 700: "#954423", 800: "#7a3a22", 900: "#65321f",
+          50: "#fff5f2", 100: "#ffe8e2", 200: "#ffdad4", 300: "#ffb4a8", 400: "#e0705f",
+          500: "#c94a38", 600: "#a83223", 700: "#8a1c10", 800: "#6b1409", 900: "#410100",
         },
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        linen: { DEFAULT: "#fbf9f6", low: "#f5f3f0", mid: "#efeeeb", high: "#eae8e5", line: "#e7e3dc" },
+        amberink: { 50: "#fffbf2", 100: "#faefe5", 200: "#f5dfa8", 700: "#904d00", 800: "#6e3900" },
+      },
+      fontFamily: {
+        serif: ["Newsreader", "Georgia", "serif"],
+        sans: ["Plus Jakarta Sans", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
     },
   },

@@ -1,13 +1,19 @@
+import Link from "next/link";
+import Icon from "./Icon";
+
 export default function Footer() {
   return (
-    <footer className="border-t border-terra-100 bg-terra-50 mt-12">
-      <div className="max-w-6xl mx-auto px-4 py-6 text-center">
-        <p className="text-terra-800 font-semibold">LontarAI</p>
-        <p className="text-stone-600 text-sm mt-1">Dibuat untuk Bali DigiFest 2026 — Build with AI, Solve for Bali.</p>
-        <p className="text-stone-500 text-xs mt-2">
-          Hasil AI adalah draf dan bukan tafsir otoritatif. Sampel naskah: Pusat Dokumentasi Dinas Kebudayaan Provinsi Bali.
-        </p>
-        <a href="/admin" className="inline-block mt-2 text-xs text-stone-400 hover:text-terra-700">Admin</a>
+    <footer className="w-full bg-white border-t border-linen-line py-8 mt-12 mb-16 md:mb-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
+        <div className="flex items-center gap-2">
+          <span className="font-serif font-semibold text-stone-800 text-sm">LontarAI</span>
+          <span>— Pelestarian naskah lontar Bali · Bali DigiFest 2026</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <span className="flex items-center gap-1"><Icon name="lock" size={15} className="text-emerald-600" /> Privat secara default</span>
+          <span>Hasil AI adalah draf, bukan tafsir otoritatif</span>
+          <Link href="/admin" className="text-stone-400 hover:text-primary">Admin</Link>
+        </div>
       </div>
     </footer>
   );

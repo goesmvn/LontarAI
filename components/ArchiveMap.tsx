@@ -18,9 +18,9 @@ const icon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-export default function ArchiveMap({ items, onSelect }: { items: ArchiveItem[]; onSelect: (i: ArchiveItem) => void }) {
+export default function ArchiveMap({ items, onSelect, height = 420 }: { items: ArchiveItem[]; onSelect: (i: ArchiveItem) => void; height?: number }) {
   return (
-    <MapContainer center={[-8.4095, 115.1889]} zoom={9} style={{ height: 420, width: "100%", borderRadius: 12 }} scrollWheelZoom={false}>
+    <MapContainer center={[-8.4095, 115.1889]} zoom={9} style={{ height, width: "100%", borderRadius: 12 }} scrollWheelZoom={false}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
       {items.map((i) => (
         <Marker key={i.slug} position={[i.latitude, i.longitude]} icon={icon} eventHandlers={{ click: () => onSelect(i) }} />

@@ -2,17 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Balinese&display=swap");
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbf9f6;
+  --foreground: #1b1c1a;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer utilities {
@@ -28,3 +28,22 @@ body {
   .print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 16mm; }
   nav, footer { display: none !important; }
 }
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  vertical-align: middle;
+}
+::selection { background: #ffdad4; color: #a83223; }

@@ -2,6 +2,9 @@
 
 Platform web untuk **mendigitalkan, membaca (draf AI), dan mengarsipkan naskah lontar Bali**, dengan pilihan simpan **Private Vault** atau **Arsip Publik** oleh masyarakat. Dibuat untuk Bali DigiFest 2026 (Build with AI, Solve for Bali). Spesifikasi lengkap: [PRD.md](PRD.md).
 
+## Desain
+Sistem visual mengikuti desain yang diberikan (Newsreader + Plus Jakarta Sans, palet terakota di atas warna linen, navigasi pill, kartu panel, tab bawah di mobile). Halaman: Overview `/`, Studio `/studio`, Peta Sebaran `/archive`, Private Vault `/vault`, Masuk `/masuk`, Admin `/admin`. Angka dan klaim di mockup (akurasi OCR, enkripsi AES-256, hitungan koleksi) **tidak** dipakai karena bukan fakta sistem ini; semua angka di UI berasal dari data nyata. Fitur mockup yang belum ada: feed komunitas/profil sosial, batch scan multi-cakepan, sertifikat kustodian, login SSO/peran, kolaborator.
+
 ## Fitur yang sudah ada
 - **Studio Transkripsi (manual-first):** unggah foto lempir (atau pakai sampel Krakah Sanggaraha), zoom per baris, lalu ketik transliterasi Latin; **aksara Bali Unicode dibuat otomatis** oleh konverter berbasis aturan (`lib/aksara.ts`, uji: `node scripts/test-aksara.mjs`) dan dapat diubah. **Bantuan AI opsional** (berbayar): menebak jumlah baris, blok, dan rumpun; belum dapat membaca aksara dengan andal.
 - **Simpan privat atau publik:**

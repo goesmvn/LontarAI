@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Icon from "@/components/Icon";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import AuthPanel from "@/components/AuthPanel";
@@ -132,6 +133,12 @@ export default function StudioPage() {
     load(await res.blob());
   };
 
+  // Deep link from the landing page: /studio?sample=krakah
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("sample") === "krakah") loadSample();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const reset = () => {
     setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
   };
@@ -247,14 +254,28 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-terra-800">Studio Transkripsi</h1>
-      <p className="text-stone-600 text-sm mt-1 mb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-6 border-b border-linen-line">
+        <div>
+          <h1 className="font-serif text-2xl lg:text-3xl text-stone-900 font-semibold">Studio Transkripsi</h1>
+          <p className="text-sm text-stone-500 mt-1">Unggah foto lempir lontar atau pilih sampel.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={loadSample} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-stone-800 border border-linen-line shadow-sm hover:bg-linen">
+            Sampel: Krakah Sanggaraha
+          </button>
+          <label className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-linen border border-linen-line text-stone-800 text-xs font-semibold shadow-sm cursor-pointer">
+            <Icon name="add_photo_alternate" size={18} className="text-primary" /> Unggah foto naskah
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) load(f); e.target.value = ""; }} />
+          </label>
+        </div>
+      </div>
+      <p className="hidden text-stone-600 text-sm mt-1 mb-6">
         Foto lempir lontar → transkripsi (manual, dengan bantuan konversi aksara dan AI opsional) → simpan privat atau bagikan ke arsip publik.
       </p>
 
       {!image && (
-        <div className="rounded-2xl border-2 border-dashed border-terra-300 bg-amber-50/50 p-8 text-center space-y-4">
+        <div className="rounded-2xl border-2 border-dashed border-terra-300 bg-white p-10 text-center space-y-4">
           <p className="text-stone-700">Unggah foto satu lempir lontar (JPG, PNG, atau WebP).</p>
           <div className="flex flex-wrap gap-3 justify-center">
             <label className="px-5 py-2.5 rounded-full bg-terra-600 text-white font-semibold cursor-pointer hover:bg-terra-700">
@@ -276,9 +297,9 @@ export default function StudioPage() {
       {image && (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left: viewer */}
-          <div className="space-y-3 min-w-0">
+          <div className="space-y-3 min-w-0 bg-white rounded-2xl border border-linen-line p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] self-start">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-stone-800">Gambar</h2>
+              <h2 className="text-xs font-semibold text-stone-800 uppercase tracking-wider flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amberink-700" />Citra naskah</h2>
               <label className="text-sm text-stone-600 flex items-center gap-2">
                 <input type="checkbox" checked={enhanced} onChange={(e) => toggleEnhanced(e.target.checked)} />
                 {enhancing ? "Memproses…" : "Enhanced (Sauvola)"}
@@ -307,10 +328,10 @@ export default function StudioPage() {
           </div>
 
           {/* Right: results */}
-          <div className="space-y-4 min-w-0">
+          <div className="space-y-4 min-w-0 bg-white rounded-2xl border border-linen-line p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
             {!analysis && !loading && !error && (
               <div className="rounded-2xl border border-terra-200 bg-amber-50/50 p-5 space-y-3">
-                <h2 className="font-semibold text-stone-800">Bagaimana ingin memulai?</h2>
+                <h2 className="font-serif text-lg font-semibold text-stone-900">Bagaimana ingin memulai?</h2>
                 <button type="button" onClick={() => { setAnalysis(emptyAnalysis()); }}
                   className="w-full text-left rounded-xl border border-terra-400 bg-white p-3 hover:bg-amber-50">
                   <b>✍ Isi manual</b> <span className="text-xs text-stone-500">(disarankan, gratis)</span>
