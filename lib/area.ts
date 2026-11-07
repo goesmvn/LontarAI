@@ -18,11 +18,13 @@ export const clampRect = (r: Rect): Rect => {
 };
 
 /** Cut the selected region out of the image. Re-encoding via canvas also strips EXIF. */
-export async function cropImage(src: string, r: Rect, maxSide = 2400): Promise<string> {
+export async function cropImage(src: string, r: Rect, maxSide = 2400, minHeight = 0): Promise<string> {
   const img = await loadImage(src);
   const sx = Math.round(r.x * img.width), sy = Math.round(r.y * img.height);
   const sw = Math.max(1, Math.round(r.w * img.width)), sh = Math.max(1, Math.round(r.h * img.height));
-  const scale = Math.min(1, maxSide / Math.max(sw, sh));
+  let scale = Math.min(1, maxSide / Math.max(sw, sh));
+  // upscale thin line crops so glyph detail is legible to the model
+  if (minHeight && sh * scale < minHeight) scale = Math.min(minHeight / sh, maxSide / sw);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(sw * scale);
   canvas.height = Math.round(sh * scale);

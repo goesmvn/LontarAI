@@ -15,6 +15,7 @@ import PrintCertificate from "@/components/PrintCertificate";
 import CropSelector from "@/components/CropSelector";
 import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
 import { segmentLines } from "@/lib/lines";
+import { referenceChart } from "@/lib/glyphChart";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -66,6 +67,8 @@ export default function StudioPage() {
   const [lineThumbs, setLineThumbs] = useState<string[]>([]);
   const [segmenting, setSegmenting] = useState(false);
   const [sens, setSens] = useState(0.35);
+  const [reading, setReading] = useState(false);
+  const [aiLines, setAiLines] = useState<Record<number, number>>({});
   const [fullImage, setFullImage] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
   const [condition, setCondition] = useState<"baik" | "rapuh" | "rusak_sebagian" | "fragmentaris">("baik");
@@ -184,13 +187,36 @@ export default function StudioPage() {
       const rects = await segmentLines(image, hasRect ? rect : null, sens);
       if (rects.length === 0) { setError("Baris tidak terdeteksi. Pilih area yang lebih sempit atau tambah baris manual."); setSegmenting(false); return; }
       const thumbs = await Promise.all(rects.map((r) => cropImage(image, r, 700)));
-      setLineRects(rects); setLineThumbs(thumbs);
+      setLineRects(rects); setLineThumbs(thumbs); setAiLines({});
       const base = analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
       const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 });
       setAnalysis({ ...base, lines: lines.map((l, k) => ({ ...l, index: k + 1 })) });
       setManualUnicode(new Set());
     } catch { setError("Gagal membagi baris."); }
     setSegmenting(false);
+  };
+  const readLinesAI = async () => {
+    if (!image || lineRects.length === 0 || !analysis) return;
+    setReading(true); setError(null);
+    try {
+      const idx = lineRects.map((_, i) => i).filter((i) => !analysis.lines[i]?.latin.trim()).slice(0, 8);
+      if (idx.length === 0) { setError("Semua baris sudah terisi. Kosongkan baris yang ingin dibaca AI."); setReading(false); return; }
+      const [chart, crops] = await Promise.all([referenceChart(), Promise.all(idx.map((i) => cropImage(image, lineRects[i], 1600, 160)))]);
+      const res = await fetch("/api/studio/read-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, lines: crops }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Gagal membaca baris."); setReading(false); return; }
+      const lines = analysis.lines.map((l, k) => {
+        const n = idx.indexOf(k);
+        return n < 0 ? l : { ...l, latin: data.lines[n].latin, unicode: latinToBali(String(data.lines[n].latin).replace(/\[\?\]/g, "")) };
+      });
+      const marks: Record<number, number> = { ...aiLines };
+      idx.forEach((k, n) => { marks[k] = data.lines[n].agreement; });
+      setAiLines(marks);
+      if (data.lines.every((l: { latin: string }) => !l.latin)) setError("AI tidak cukup yakin untuk membaca baris-baris ini (biasanya karena resolusi foto rendah). Coba foto yang lebih tajam, area lebih ketat, atau isi manual.");
+      setAnalysis({ ...analysis, lines, unicode_transcription: lines.map((l) => l.unicode).join("\n"), latin_transliteration: lines.map((l) => l.latin).join("\n") });
+      setEdited(true);
+    } catch { setError("Gagal terhubung ke server."); }
+    setReading(false);
   };
   const analyzeArea = async () => {
     if (!image || !rect) return;
@@ -201,17 +227,17 @@ export default function StudioPage() {
     try {
       const cropped = await cropImage(image, rect);
       if (!fullImage) setFullImage(image);
-      setLineRects([]); setLineThumbs([]); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
+      setLineRects([]); setLineThumbs([]); setAiLines({}); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
       setRect(null); setSuggestions([]); setCropMode(false); setZoom(100); setDims(null);
     } catch { setError("Gagal memotong area."); }
   };
   const restoreFull = () => {
     if (!fullImage) return;
-    setLineRects([]); setLineThumbs([]); setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
+    setLineRects([]); setLineThumbs([]); setAiLines({}); setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
   };
 
   const reset = () => {
-    setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false); setLineRects([]); setLineThumbs([]);
+    setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false); setLineRects([]); setLineThumbs([]); setAiLines({});
     setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
   };
 
@@ -424,6 +450,11 @@ export default function StudioPage() {
                     Kepekaan <input type="range" min={0.12} max={0.6} step={0.01} value={0.72 - sens} onChange={(e) => setSens(0.72 - Number(e.target.value))} className="w-20 accent-[#a83223]" />
                   </label>
                   <button type="button" onClick={splitLines} disabled={segmenting} className="px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-medium flex items-center gap-1 disabled:opacity-50"><Icon name="format_line_spacing" size={15} />{segmenting ? "Membagi…" : "Bagi per Baris"}</button>
+                  {lineRects.length > 0 && (
+                    <button type="button" onClick={readLinesAI} disabled={reading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-50" title="AI mencocokkan glif dengan tabel rujukan, 3 kali per baris; hanya bagian yang konsisten dipertahankan.">
+                      <Icon name="smart_toy" size={15} />{reading ? "Membaca… (±30 dtk)" : "Baca Baris (AI, draf)"}
+                    </button>
+                  )}
                   <button type="button" onClick={applyCrop} disabled={!hasRect} className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 font-medium flex items-center gap-1 disabled:opacity-40"><Icon name="crop" size={15} /> Potong &amp; Pakai</button>
                   <button type="button" onClick={analyzeArea} disabled={!hasRect || loading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-40"><Icon name="smart_toy" size={15} /> Analisis Area (AI)</button>
                   <button type="button" onClick={() => { setRect(null); setSuggestions([]); }} disabled={!rect && !suggestions.length} className="px-2 py-1.5 text-stone-500 hover:text-primary disabled:opacity-40">Hapus pilihan</button>
@@ -556,7 +587,7 @@ export default function StudioPage() {
                     <div key={i} onFocus={() => setActiveLine(i)}
                       className={`rounded-2xl border p-3 space-y-1.5 ${activeLine === i ? "border-stone-300 bg-amberink-50" : "border-stone-200"}`}>
                       <div className="flex items-center justify-between text-[11px] text-stone-500">
-                        <span className="font-mono">Baris {l.index}</span>
+                        <span className="font-mono">Baris {l.index}{aiLines[i] !== undefined && <span className="ml-2 px-1.5 py-0.5 rounded bg-amberink-100 text-amberink-700 normal-case">AI draf · konsistensi {Math.round(aiLines[i] * 100)}%</span>}</span>
                         <span className="flex items-center gap-2">
                           {analysis.model !== "manual" && l.confidence > 0 && <span className={band(l.confidence)[1]}>{band(l.confidence)[0]}</span>}
                           <select value={l.block} onChange={(e) => commitLines(analysis.lines.map((x, k) => (k === i ? { ...x, block: e.target.value as Line["block"] } : x)))}
