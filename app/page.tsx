@@ -21,9 +21,9 @@ const FEATURES = [
 ];
 
 const SAMPLES = [
-  { img: "/samples/taru-pramana.jpg", tag: "Usada Herbal", meta: "Gianyar • Abad 18", title: "Usada Taru Pramana", text: "Ajaran penyembuhan tradisional Bali tentang khasiat ratusan jenis tanaman herbal dan daun berkhasiat.", pct: 96, ok: true, href: "/studio?sample=taru" },
-  { img: "/samples/babad-klungkung.jpg", tag: "Babad Klungkung", meta: "Klungkung • Abad 17", title: "Babad Dalem Klungkung", text: "Kronik silsilah raja-raja dan pergolakan sejarah dinasti Gelgel dan Klungkung dengan gaya sastra kawi.", pct: 89, ok: false, href: "/studio?sample=babad" },
-  { img: "/samples/wariga-gemet.jpg", tag: "Wariga Kalender", meta: "Karangasem • Abad 19", title: "Wariga Gemet Pawukon", text: "Sistem perhitungan astrologi kalender Bali, hari baik (dewasa ayu), dan ritme siklus kehidupan agraris.", pct: 94, ok: true, href: "/studio?sample=wariga" },
+  { img: "/samples/taru-pramana.jpg", tag: "Usada Herbal", meta: "Gianyar • Abad 18", title: "Usada Taru Pramana", text: "Ajaran penyembuhan tradisional Bali tentang khasiat ratusan jenis tanaman herbal dan daun berkhasiat.", pct: 96, ok: true, href: "/studio" },
+  { img: "/samples/babad-klungkung.jpg", tag: "Babad Klungkung", meta: "Klungkung • Abad 17", title: "Babad Dalem Klungkung", text: "Kronik silsilah raja-raja dan pergolakan sejarah dinasti Gelgel dan Klungkung dengan gaya sastra kawi.", pct: 89, ok: false, href: "/studio" },
+  { img: "/samples/wariga-gemet.jpg", tag: "Wariga Kalender", meta: "Karangasem • Abad 19", title: "Wariga Gemet Pawukon", text: "Sistem perhitungan astrologi kalender Bali, hari baik (dewasa ayu), dan ritme siklus kehidupan agraris.", pct: 94, ok: true, href: "/studio" },
 ];
 
 

@@ -150,10 +150,7 @@ export default function StudioPage() {
   };
 
   const SAMPLE_LIST = [
-    { id: "krakah", label: "Sampel 1: Krakah (Lempir)", file: "/samples/krakah-sanggaraha.webp", title: "Krakah Sanggaraha" },
-    { id: "taru", label: "Sampel 2: Usada (Pengobatan)", file: "/samples/taru-pramana.jpg", title: "Usada Taru Pramana" },
-    { id: "babad", label: "Sampel 3: Babad (Sejarah)", file: "/samples/babad-klungkung.jpg", title: "Babad Dalem Klungkung" },
-    { id: "wariga", label: "Sampel 4: Wariga (Astronomi)", file: "/samples/wariga-gemet.jpg", title: "Wariga Gemet Pawukon" },
+    { id: "krakah", label: "Sampel: Krakah Sanggaraha", file: "/samples/krakah-sanggaraha.webp", title: "Krakah Sanggaraha" },
   ];
   const [activeSample, setActiveSample] = useState<string | null>(null);
   const loadSample = async (id = "krakah") => {
