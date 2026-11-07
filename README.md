@@ -28,15 +28,18 @@ Deteksi otomatis lempir/baris, deskew, tiling untuk strip sangat panjang, multi-
 ## Menjalankan
 ```bash
 npm install
-cp .env.example .env.local   # isi OPENAI_API_KEY dan kunci Supabase
+cp .env.example .env.local   # isi ANTHROPIC_API_KEY dan kunci Supabase
+node --env-file=.env.local scripts/check-setup.mjs   # cek kunci, tabel, RLS, bucket
 npm run dev                  # http://localhost:3000
 ```
+AI: default **Claude** (`claude-opus-5-5`, streaming, effort `high`, fallback server-side). Ganti model lewat `LONTAR_AI_MODEL`; OpenAI tersedia sebagai alternatif dengan `AI_PROVIDER=openai`.
+
 Supabase: jalankan [supabase/schema.sql](supabase/schema.sql), buat bucket `vault` (private) dan `archive` (public), aktifkan Email auth (magic link) dan tambahkan URL aplikasi ke Redirect URLs.
 
-Tanpa `OPENAI_API_KEY`, Studio menampilkan pesan dan mode isi manual. Tanpa Supabase, simpan dinonaktifkan.
+Tanpa `ANTHROPIC_API_KEY`, Studio menampilkan pesan dan mode isi manual. Tanpa Supabase, simpan dinonaktifkan.
 
 ## Catatan jujur
 - Kemampuan model umum membaca aksara Bali belum terbukti andal. Semua hasil berlabel **Draf AI**; evaluasi CER terencana (PRD §9).
 
 ## Kredit
-Sampel naskah: Pusat Dokumentasi Dinas Kebudayaan Provinsi Bali (dipakai dengan izin). Next.js, Tailwind CSS, Supabase, Leaflet/OpenStreetMap, OpenAI API, Zod.
+Sampel naskah: Pusat Dokumentasi Dinas Kebudayaan Provinsi Bali (dipakai dengan izin). Next.js, Tailwind CSS, Supabase, Leaflet/OpenStreetMap, Claude API (Anthropic), Zod.
