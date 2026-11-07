@@ -68,6 +68,7 @@ export default function StudioPage() {
   const [segmenting, setSegmenting] = useState(false);
   const [sens, setSens] = useState(0.35);
   const [reading, setReading] = useState(false);
+  const [splitKey, setSplitKey] = useState("");
   const [aiLines, setAiLines] = useState<Record<number, number>>({});
   const [aiOriginal, setAiOriginal] = useState<Record<number, string>>({});
   const [shareTraining, setShareTraining] = useState(false);
@@ -180,22 +181,42 @@ export default function StudioPage() {
     } catch { setError("Gagal mendeteksi area."); }
     setDetecting(false);
   };
-  const splitLines = async () => {
-    if (!image) return;
+  const areaKey = () => (hasRect && rect ? [rect.x, rect.y, rect.w, rect.h].map((v) => v.toFixed(4)).join(",") : "full");
+  // Split the selected area (or whole image) into text lines. Returns the new rects + analysis so callers can chain.
+  const splitLines = async (fresh = false): Promise<{ rects: Rect[]; analysis: AnalysisResult } | null> => {
+    if (!image) return null;
     setSegmenting(true); setError(null);
     try {
       const rects = await segmentLines(image, hasRect ? rect : null, sens);
-      if (rects.length === 0) { setError("Baris tidak terdeteksi. Pilih area yang lebih sempit atau tambah baris manual."); setSegmenting(false); return; }
+      if (rects.length === 0) { setError("Baris tidak terdeteksi. Pilih area yang lebih sempit atau tambah baris manual."); setSegmenting(false); return null; }
       const thumbs = await Promise.all(rects.map((r) => cropImage(image, r, 700)));
-      setLineRects(rects); setLineThumbs(thumbs); setAiLines({}); setAiOriginal({});
-      const base = analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
-      const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 });
-      setAnalysis({ ...base, lines: lines.map((l, k) => ({ ...l, index: k + 1 })) });
+      const base = !fresh && analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
+      const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 }).map((l, k) => ({ ...l, index: k + 1 }));
+      const next = { ...base, lines };
+      setLineRects(rects); setLineThumbs(thumbs); setAiLines({}); setAiOriginal({}); setSplitKey(areaKey());
+      setAnalysis(next);
       setManualUnicode(new Set());
+      setSegmenting(false);
+      return { rects, analysis: next };
     } catch { setError("Gagal membagi baris."); }
     setSegmenting(false);
+    return null;
   };
-  const readLinesAI = async () => {
+
+  // One click: split the selection into lines (if not done for this exact area), then let the AI read them.
+  const checkWithAI = async () => {
+    if (!image) return;
+    let rects = lineRects, an = analysis;
+    if (rects.length === 0 || splitKey !== areaKey() || !an) {
+      const r = await splitLines(splitKey !== areaKey());
+      if (!r) return;
+      rects = r.rects; an = r.analysis;
+    }
+    await readLinesAI(rects, an);
+  };
+
+  // Parameters intentionally shadow the state: callers pass freshly computed values (state may not have updated yet).
+  const readLinesAI = async (lineRects: Rect[], analysis: AnalysisResult | null) => {
     if (!image || lineRects.length === 0 || !analysis) return;
     setReading(true); setError(null);
     try {
@@ -225,10 +246,6 @@ export default function StudioPage() {
       setEdited(true);
     } catch { setError("Gagal terhubung ke server."); }
     setReading(false);
-  };
-  const analyzeArea = async () => {
-    if (!image || !rect) return;
-    try { analyze(await cropImage(viewSrc(), rect)); } catch { setError("Gagal memotong area."); }
   };
   const applyCrop = async () => {
     if (!image || !rect) return;
@@ -485,14 +502,11 @@ export default function StudioPage() {
                   <label className="flex items-center gap-1.5 text-[11px] text-stone-500" title="Kanan: baris samar ikut terdeteksi. Kiri: hanya baris yang jelas.">
                     Kepekaan <input type="range" min={0.12} max={0.6} step={0.01} value={0.72 - sens} onChange={(e) => setSens(0.72 - Number(e.target.value))} className="w-20 accent-[#a83223]" />
                   </label>
-                  <button type="button" onClick={splitLines} disabled={segmenting} className="px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-medium flex items-center gap-1 disabled:opacity-50"><Icon name="format_line_spacing" size={15} />{segmenting ? "Membagi…" : "Bagi per Baris"}</button>
-                  {lineRects.length > 0 && (
-                    <button type="button" onClick={readLinesAI} disabled={reading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-50" title="AI mencocokkan glif dengan tabel rujukan, 3 kali per baris; hanya bagian yang konsisten dipertahankan.">
-                      <Icon name="smart_toy" size={15} />{reading ? "Membaca… (±30 dtk)" : "Baca Baris (AI, draf)"}
-                    </button>
-                  )}
+                  <button type="button" onClick={() => splitLines(splitKey !== areaKey())} disabled={segmenting || reading} className="px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-medium flex items-center gap-1 disabled:opacity-50"><Icon name="format_line_spacing" size={15} />{segmenting ? "Membagi…" : "Bagi per Baris"}</button>
                   <button type="button" onClick={applyCrop} disabled={!hasRect} className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 font-medium flex items-center gap-1 disabled:opacity-40"><Icon name="crop" size={15} /> Potong &amp; Pakai</button>
-                  <button type="button" onClick={analyzeArea} disabled={!hasRect || loading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-40"><Icon name="smart_toy" size={15} /> Analisis Area (AI)</button>
+                  <button type="button" onClick={checkWithAI} disabled={segmenting || reading} className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white font-semibold flex items-center gap-1.5 disabled:opacity-50 shadow-sm" title="Membagi area menjadi baris, lalu AI membaca tiap baris (draf, perlu diperiksa).">
+                    <Icon name="smart_toy" size={16} />{segmenting ? "Membagi baris…" : reading ? "AI membaca… (±30 dtk)" : hasRect ? "Cek dengan AI" : "Cek seluruh gambar dengan AI"}
+                  </button>
                   <button type="button" onClick={() => { setRect(null); setSuggestions([]); }} disabled={!rect && !suggestions.length} className="px-2 py-1.5 text-stone-500 hover:text-primary disabled:opacity-40">Hapus pilihan</button>
                 </div>
               )}
