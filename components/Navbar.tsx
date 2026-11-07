@@ -56,11 +56,11 @@ export default function Navbar() {
             <div className="flex items-center gap-2.5 pl-3 border-l border-stone-200">
               {ready && configured && session ? (
                 <>
-                  <span className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold ring-2 ring-stone-100" title={session.user.email ?? ""}>
-                    {(session.user.email ?? "?")[0].toUpperCase()}
-                  </span>
+                  <Link href="/dashboard" aria-label="Buka dasbor" className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold ring-2 ring-stone-100" title="Dasbor">
+                    {(((session.user.user_metadata as { full_name?: string })?.full_name || session.user.email) ?? "?")[0].toUpperCase()}
+                  </Link>
                   <div className="hidden lg:flex flex-col leading-tight">
-                    <span className="text-sm font-semibold text-stone-900 max-w-[140px] truncate">{session.user.email}</span>
+                    <Link href="/dashboard" className="text-sm font-semibold text-stone-900 max-w-[140px] truncate hover:text-primary">{(session.user.user_metadata as { full_name?: string })?.full_name || session.user.email}</Link>
                     <button type="button" onClick={() => getBrowserSupabase().auth.signOut()} className="text-left font-mono text-[11px] text-stone-500 hover:text-primary">Keluar</button>
                   </div>
                 </>

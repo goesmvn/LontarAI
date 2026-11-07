@@ -16,6 +16,7 @@ import CropSelector from "@/components/CropSelector";
 import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
 import { segmentLines } from "@/lib/lines";
 import { referenceChart } from "@/lib/glyphChart";
+import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
 import { segmentGlyphs, markedTiles, cutGlyphs } from "@/lib/glyphs";
 import { markedExamples } from "@/lib/glyphExamples";
 import { assemble, defaultTrie, loadExtraLexicon, type Cand, type Token } from "@/lib/lexicon";
@@ -72,6 +73,7 @@ export default function StudioPage() {
   const [sens, setSens] = useState(0.35);
   const [reading, setReading] = useState(false);
   const [splitKey, setSplitKey] = useState("");
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const [lineGlyphs, setLineGlyphs] = useState<Record<number, { thumbs: string[]; cands: Cand[][]; tokens: Token[] }>>({});
   const [aiLines, setAiLines] = useState<Record<number, number>>({});
   const [aiOriginal, setAiOriginal] = useState<Record<number, string>>({});
@@ -286,6 +288,30 @@ export default function StudioPage() {
     setLineRects([]); setLineThumbs([]); setAiLines({}); setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
   };
 
+  // Autosave a draft (debounced) so work survives reloads; restore with /studio?draft=1.
+  useEffect(() => {
+    if (!image || !analysis || saved) return;
+    const t = setTimeout(async () => {
+      const at = Date.now();
+      await saveDraft({ image, title, owner, banjar, era, regency, analysis, lineRects, updatedAt: at });
+      setDraftSavedAt(at);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [image, analysis, title, owner, banjar, era, regency, lineRects, saved]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("draft") !== "1") return;
+    (async () => {
+      const d = await loadDraft();
+      if (!d) { setError("Draf tidak ditemukan di peramban ini."); return; }
+      setImage(d.image); setAnalysis(d.analysis); setTitle(d.title); setOwner(d.owner); setBanjar(d.banjar); setEra(d.era); setRegency(d.regency);
+      setLineRects(d.lineRects ?? []); setEdited(true); setSplitKey("restored");
+      if (d.lineRects?.length) setLineThumbs(await Promise.all(d.lineRects.map((r) => cropImage(d.image, r, 700))));
+      setDraftSavedAt(d.updatedAt);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const reset = () => {
     setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false); setLineRects([]); setLineThumbs([]); setAiLines({});
     setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
@@ -404,7 +430,7 @@ export default function StudioPage() {
       const data = await res.json();
       if (!res.ok) setSaveError(data.error || "Gagal menyimpan.");
       else {
-        setSaved({ visibility });
+        setSaved({ visibility }); clearDraft();
         if (shareTraining && !pingit && data.id) await submitTraining(data.id, session.access_token);
       }
     } catch {
@@ -441,7 +467,7 @@ export default function StudioPage() {
             <h1 className="font-serif text-3xl lg:text-4xl text-stone-900 font-semibold">Studio Transkripsi</h1>
             <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 font-mono text-xs text-stone-600">ViT 1.5</span>
           </div>
-          <p className="text-sm text-stone-500 mt-1">Unggah foto lempir lontar atau pilih sampel uji coba.</p>
+          <p className="text-sm text-stone-500 mt-1">Unggah foto lempir lontar atau pilih sampel uji coba.{draftSavedAt && <span className="ml-2 text-emerald-700 text-xs">· draf tersimpan otomatis di peramban ini</span>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200">
