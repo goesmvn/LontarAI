@@ -6,14 +6,15 @@ import Icon from "@/components/Icon";
 import { getBrowserSupabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 
+// Roles live in logic only (not shown in the UI). New accounts start as "kustodian"; admin access is decided server-side (ADMIN_EMAILS).
+const DEFAULT_ROLE = "kustodian" as const;
+
 export default function MasukPage() {
   const { session, ready, configured } = useSession();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [role, setRole] = useState<"Kustodian" | "Peneliti" | "Krama">("Kustodian");
-  const ROLE_TEXT = { Kustodian: "Akses penuh pemilik naskah & Brankas Pingit keluarga griya/puri.", Peneliti: "Menelusuri arsip publik dan mengusulkan koreksi transkripsi.", Krama: "Membaca arsip publik dan melaporkan naskah yang tidak semestinya terbuka." } as const;
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ export default function MasukPage() {
     setError(null);
     const { error } = await getBrowserSupabase().auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/vault` },
+      options: { emailRedirectTo: `${window.location.origin}/vault`, data: { role: DEFAULT_ROLE } },
     });
     setSending(false);
     if (error) setError("Gagal mengirim tautan masuk. Periksa email Anda dan coba lagi.");
@@ -42,18 +43,6 @@ export default function MasukPage() {
         </header>
 
         <div className="bg-white rounded-3xl shadow-[0_20px_40px_-8px_rgba(38,30,20,0.08)] border border-linen-line p-6 sm:p-8">
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-2">
-            <span>Peran Aksesibilitas</span>
-            <span className="flex items-center gap-1 text-amberink-700 normal-case tracking-normal text-xs"><Icon name="shield_lock" size={15} /> Terenkripsi</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-stone-100 mb-3">
-            {(["Kustodian", "Peneliti", "Krama"] as const).map((r) => (
-              <button key={r} type="button" onClick={() => setRole(r)}
-                className={`py-2 rounded-lg text-xs ${role === r ? "bg-white text-stone-900 font-semibold shadow-sm" : "text-stone-500 hover:text-stone-800"}`}>{r}</button>
-            ))}
-          </div>
-          <p className="flex items-start gap-2 text-sm text-stone-600 mb-6"><Icon name="account_balance" size={18} className="text-primary shrink-0 mt-0.5" />{ROLE_TEXT[role]}</p>
-
           {!ready ? null : !configured ? (
             <p className="text-sm text-stone-600">Layanan masuk belum dikonfigurasi di server ini.</p>
           ) : session ? (
