@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import type { WasteReport } from "@/types/waste";
+import {
+  MAX_DESCRIPTION_LENGTH,
+  clientIp,
+  rateLimit,
+  validateBaliCoordinates,
+  validateImageDataUrl,
+} from "@/lib/validation";
 
 export async function GET() {
   try {
@@ -45,25 +52,29 @@ export async function POST(request: NextRequest) {
 
   const { lat, lng, description, photo } = body;
 
-  if (lat == null || lng == null) {
+  if (!rateLimit(`reports:${clientIp(request.headers)}`, 5, 10 * 60_000)) {
     return NextResponse.json(
-      { error: "Lokasi diperlukan." },
-      { status: 400 }
+      { error: "Terlalu banyak laporan. Coba lagi beberapa menit lagi." },
+      { status: 429 }
     );
   }
 
-  if (!photo) {
-    return NextResponse.json(
-      { error: "Foto diperlukan." },
-      { status: 400 }
-    );
+  const validationError =
+    validateBaliCoordinates(lat, lng) ??
+    (photo ? validateImageDataUrl(photo) : "Foto diperlukan.") ??
+    (description && description.length > MAX_DESCRIPTION_LENGTH
+      ? `Keterangan maksimal ${MAX_DESCRIPTION_LENGTH} karakter.`
+      : null);
+
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   try {
     const supabase = getSupabase();
 
     // Convert base64 data URL to Blob for storage upload
-    const base64Response = await fetch(photo);
+    const base64Response = await fetch(photo as string);
     const blob = await base64Response.blob();
 
     const filename = `${crypto.randomUUID()}.jpg`;

@@ -27,9 +27,16 @@ function createIcon(color: string) {
   });
 }
 
+// The report form prefixes the description with "[<zone label>]" for sensitive zones.
+function splitZone(description: string | null): { zone: string | null; text: string } {
+  const m = /^\[([^\]]+)\]\s*([\s\S]*)$/.exec(description ?? "");
+  return m ? { zone: m[1], text: m[2] } : { zone: null, text: description ?? "" };
+}
+
 export default function ReportMap() {
   const [reports, setReports] = useState<WasteReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>("all");
 
   useEffect(() => {
     fetch("/api/reports")
@@ -49,8 +56,27 @@ export default function ReportMap() {
     );
   }
 
+  const visible =
+    filter === "all" ? reports : reports.filter((r) => r.status === filter);
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 justify-center">
+        {[["all", "Semua"], ...Object.entries(STATUS_LABELS)].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setFilter(id)}
+            className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+              filter === id
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-green-50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <MapContainer
         center={[-8.3405, 115.092]}
         zoom={10}
@@ -61,7 +87,8 @@ export default function ReportMap() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="© OpenStreetMap contributors"
         />
-        {reports.map((report) => {
+        {visible.map((report) => {
+          const { zone, text } = splitZone(report.description);
           const color = STATUS_COLORS[report.status] || STATUS_COLORS.reported;
           return (
             <Marker
@@ -78,10 +105,13 @@ export default function ReportMap() {
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
                   )}
-                  {report.description && (
-                    <p className="text-gray-700 text-sm mb-2">
-                      {report.description}
+                  {zone && (
+                    <p className="text-xs font-medium text-amber-700 bg-amber-50 rounded px-2 py-1 mb-2">
+                      Zona sensitif: {zone}
                     </p>
+                  )}
+                  {text && (
+                    <p className="text-gray-700 text-sm mb-2">{text}</p>
                   )}
                   <span
                     className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
@@ -118,7 +148,7 @@ export default function ReportMap() {
 
       {/* Count */}
       <p className="text-center text-gray-500 text-sm">
-        {reports.length} laporan tercatat
+        {visible.length} laporan ditampilkan dari {reports.length} tercatat
       </p>
     </div>
   );

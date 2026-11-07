@@ -1,11 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ImageUpload from "@/components/ImageUpload";
 import ClassificationResult from "@/components/ClassificationResult";
 import type { ClassificationResult as Result } from "@/types/waste";
 
+type HistoryItem = { itemName: string; categoryName: string; category: string; at: number };
+const HISTORY_KEY = "bali-bersih-history";
+
 export default function Home() {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    try {
+      setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"));
+    } catch {}
+  }, []);
+
+  const saveToHistory = (r: Result) => {
+    if (r.category === "none") return;
+    const next = [
+      { itemName: r.itemName, categoryName: r.categoryName, category: r.category, at: Date.now() },
+      ...history,
+    ].slice(0, 10);
+    setHistory(next);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    } catch {}
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch {}
+  };
+
   const [image, setImage] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +62,7 @@ export default function Home() {
       }
 
       setResult(data.data);
+      saveToHistory(data.data);
     } catch {
       setError("Gagal terhubung ke server. Periksa koneksi internet Anda.");
     } finally {
@@ -113,6 +144,25 @@ export default function Home() {
           />
         )}
       </div>
+
+      {history.length > 0 && (
+        <div className="mt-6 bg-white rounded-2xl border border-green-50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-semibold text-gray-800 text-sm">Riwayat klasifikasi</h2>
+            <button type="button" onClick={clearHistory} className="text-xs text-gray-400 hover:text-red-600">
+              Hapus
+            </button>
+          </div>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {history.map((h) => (
+              <li key={h.at} className="flex justify-between py-1.5 gap-3">
+                <span className="text-gray-700 truncate">{h.itemName}</span>
+                <span className="text-gray-500 shrink-0">{h.categoryName}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Info */}
       <div className="mt-6 text-center">

@@ -109,6 +109,14 @@ CREATE POLICY "Public update" ON waste_reports FOR UPDATE USING (true);
 3. Create a public storage bucket named `report-photos`
 4. Copy Project URL and anon key from Settings → API to `.env.local`
 
+## Recent Improvements
+
+- Server-side validation: image format/size (JPEG/PNG/WebP, max 4MB), coordinates restricted to Bali, description max 500 chars.
+- Basic per-IP rate limiting (best-effort, in-memory) on `/api/classify` and `/api/reports`.
+- Classification output is normalized before being returned to the client.
+- Report map: status filter and sensitive-zone badge in popups.
+- Local classification history (last 10, stored in the browser only).
+
 ## Deployment URL
 
 _(Fill after Vercel deployment)_

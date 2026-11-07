@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAI } from "@/lib/openai";
 import type { ClassificationResult } from "@/types/waste";
+import { clientIp, rateLimit, validateImageDataUrl } from "@/lib/validation";
 
 const VALID_CATEGORIES = [
   "organik",
@@ -45,11 +46,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { image } = body;
-
-  if (!image) {
+  if (!rateLimit(`classify:${clientIp(request.headers)}`, 15, 60_000)) {
     return NextResponse.json(
-      { error: "Gambar tidak ditemukan." },
+      { error: "Terlalu banyak permintaan. Coba lagi sebentar lagi." },
+      { status: 429 }
+    );
+  }
+
+  const { image } = body;
+  const imageError = validateImageDataUrl(image);
+
+  if (imageError || !image) {
+    return NextResponse.json(
+      { error: imageError ?? "Gambar tidak ditemukan." },
       { status: 400 }
     );
   }
@@ -108,7 +117,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, data: parsed });
+    const data: ClassificationResult = {
+      category: parsed.category,
+      categoryName: String(parsed.categoryName ?? ""),
+      itemName: String(parsed.itemName ?? ""),
+      recyclable: Boolean(parsed.recyclable),
+      disposalInstructions: String(parsed.disposalInstructions ?? ""),
+      ecoTip: String(parsed.ecoTip ?? ""),
+      confidence: ["high", "medium", "low"].includes(parsed.confidence)
+        ? parsed.confidence
+        : "low",
+    };
+
+    return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json(
       { error: "Gagal menganalisis gambar. Silakan coba lagi." },
