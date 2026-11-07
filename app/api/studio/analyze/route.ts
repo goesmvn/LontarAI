@@ -32,6 +32,14 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
+    // Log the cause server-side (never returned to the client).
+    console.error("[analyze] gagal:", e instanceof Error ? `${e.name}: ${e.message}` : e);
+    if (e instanceof Error && /credit balance/i.test(e.message)) {
+      return NextResponse.json(
+        { error: "Kredit layanan AI sedang habis. Hubungi pengelola, atau isi transkripsi secara manual.", manual: true },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Gagal menganalisis naskah. Coba lagi atau isi manual.", manual: true },
       { status: 502 }
