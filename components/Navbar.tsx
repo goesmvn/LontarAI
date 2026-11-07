@@ -20,19 +20,21 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-[2000] bg-white/90 backdrop-blur-md border-b border-linen-line">
+      <header className="sticky top-0 z-[2000] bg-[rgba(250,248,245,0.85)] backdrop-blur-[8px] border-b border-stone-200">
         <div className="h-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-            <span className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center font-serif text-lg font-semibold group-hover:bg-primary transition-colors">
-              ᬮ
-            </span>
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Logo LontarAI" className="w-9 h-9 rounded-lg object-contain" />
             <span className="flex flex-col leading-none">
-              <span className="font-serif text-xl font-semibold tracking-tight text-stone-900">LontarAI</span>
-              <span className="hidden lg:block font-mono text-[10px] text-stone-500 mt-0.5">Preservasi Naskah Bali</span>
+              <span className="flex items-center gap-2">
+                <span className="font-serif text-xl font-semibold tracking-tight text-stone-900">LontarAI</span>
+                <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-amberink-100 text-amberink-700 text-[11px] font-semibold">Bali DigiFest 2026</span>
+              </span>
+              <span className="hidden lg:block font-mono text-[10px] text-stone-500 mt-1">Aksara Epigraphic Intelligence</span>
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 bg-linen-mid p-1 rounded-full border border-linen-line">
+          <nav className="hidden md:flex items-center gap-1 bg-stone-100 p-1 rounded-full border border-stone-200">
             {LINKS.map((l) => (
               <Link
                 key={l.href}
@@ -67,7 +69,7 @@ export default function Navbar() {
       </header>
 
       {/* Mobile bottom tabs */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-[2000] bg-white/95 backdrop-blur-md border-t border-linen-line">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-[2000] bg-[rgba(250,248,245,0.92)] backdrop-blur-[8px] border-t border-stone-200">
         <div className="flex items-center justify-around h-16">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className={`flex flex-col items-center justify-center w-16 h-12 ${active(l) ? "text-primary font-semibold" : "text-stone-500"}`}>

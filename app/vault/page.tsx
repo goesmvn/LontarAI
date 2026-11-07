@@ -51,6 +51,14 @@ export default function VaultPage() {
     }
   };
   const makePrivate = (i: Item) => call(i.id, { method: "PATCH", body: JSON.stringify({ visibility: "private" }) });
+  const [shared, setShared] = useState<string | null>(null);
+  const share = async (i: Item) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/archive/${i.slug}`);
+      setShared(i.id);
+      setTimeout(() => setShared(null), 1800);
+    } catch {}
+  };
   const remove = (i: Item) => {
     if (window.confirm(`Hapus "${i.title}" secara permanen beserta gambarnya? Ini tidak dapat dibatalkan.`)) call(i.id, { method: "DELETE" });
   };
@@ -176,6 +184,11 @@ export default function VaultPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-linen-low">
                     <span className="text-xs text-stone-500">Disimpan {new Date(i.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}</span>
                     <div className="flex items-center gap-2">
+                      {i.visibility === "public" && (
+                        <button type="button" onClick={() => share(i)} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-linen text-xs font-medium text-stone-600 flex items-center gap-1.5">
+                          <Icon name="share" size={16} /> {shared === i.id ? "Tautan disalin" : "Bagikan"}
+                        </button>
+                      )}
                       {i.visibility === "public" && (
                         <Link href={`/archive/${i.slug}`} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-linen text-xs font-semibold text-stone-800 flex items-center gap-1.5">
                           <Icon name="visibility" size={16} /> Buka

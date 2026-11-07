@@ -49,7 +49,8 @@ export default function StudioPage() {
   const [edited, setEdited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"teks" | "terjemahan">("teks");
+  const [lang, setLang] = useState<"id" | "en">("id");
+  const [copied, setCopied] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [manualUnicode, setManualUnicode] = useState<Set<number>>(new Set());
   const [showGuide, setShowGuide] = useState(false);
@@ -180,6 +181,9 @@ export default function StudioPage() {
     commitLines(renumber(analysis.lines.filter((_, k) => k !== i)));
     setManualUnicode(new Set());
   };
+  const copy = async (what: string, text: string) => {
+    try { await navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch {}
+  };
   const insertChar = (ch: string) => {
     const el = document.activeElement as HTMLTextAreaElement | null;
     if (!el || el.dataset.latin === undefined) return;
@@ -297,25 +301,32 @@ export default function StudioPage() {
       {image && (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left: viewer */}
-          <div className="space-y-3 min-w-0 bg-white rounded-2xl border border-linen-line p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] self-start">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-stone-800 uppercase tracking-wider flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amberink-700" />Citra naskah</h2>
-              <label className="text-sm text-stone-600 flex items-center gap-2">
-                <input type="checkbox" checked={enhanced} onChange={(e) => toggleEnhanced(e.target.checked)} />
-                {enhancing ? "Memproses…" : "Enhanced (Sauvola)"}
-              </label>
+          <div className="min-w-0 bg-white rounded-2xl border border-stone-200 overflow-hidden self-start shadow-[0_2px_12px_rgba(24,24,27,0.03)]">
+            <div className="px-5 py-3.5 border-b border-stone-100 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xs font-semibold text-stone-900 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amberink-700" />{title.trim() ? `Lempir: ${title}` : "Citra naskah"}
+              </h2>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
+                  <button type="button" onClick={() => toggleEnhanced(false)} className={`px-2.5 py-1 rounded-md text-xs ${!enhanced ? "bg-white text-primary font-semibold shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>Asli</button>
+                  <button type="button" onClick={() => toggleEnhanced(true)} className={`px-2.5 py-1 rounded-md text-xs ${enhanced ? "bg-white text-primary font-semibold shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>
+                    {enhancing ? "Memproses…" : "Kontras tinggi"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-0.5 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
+                  <button type="button" aria-label="Perkecil" onClick={() => setZoom(Math.max(100, zoom - 25))} className="p-1 rounded-md text-stone-500 hover:text-stone-900"><Icon name="zoom_out" size={16} /></button>
+                  <span className="text-xs font-mono text-stone-700 w-10 text-center">{zoom}%</span>
+                  <button type="button" aria-label="Perbesar" onClick={() => setZoom(Math.min(500, zoom + 25))} className="p-1 rounded-md text-stone-500 hover:text-stone-900"><Icon name="zoom_in" size={16} /></button>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <span>Zoom</span>
-              <input type="range" min={100} max={500} step={25} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="flex-1" aria-label="Zoom gambar" />
-              <span className="w-10 text-right">{zoom}%</span>
-            </div>
+            <div className="p-4 space-y-3">
             <div className="overflow-auto max-h-[70vh] rounded-xl border border-stone-200 bg-stone-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto"
                 style={{ width: `${zoom}%` }} />
             </div>
-            <p className="text-xs text-stone-500">Perbesar lalu geser untuk membaca per baris. Enhanced = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
+            <p className="text-xs text-stone-500 text-center">Perbesar lalu geser untuk membaca per baris. Kontras tinggi = binarisasi adaptif Sauvola (pratinjau); berkas asli tetap yang disimpan.</p>
             <div className="flex flex-wrap gap-4 text-sm">
               <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
               {enhancedImg && !loading && (
@@ -325,10 +336,26 @@ export default function StudioPage() {
               )}
             </div>
             {analysis && analysis.model !== "manual" && <p className="text-xs text-stone-400">Bantuan AI terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
+            </div>
           </div>
 
           {/* Right: results */}
-          <div className="space-y-4 min-w-0 bg-white rounded-2xl border border-linen-line p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          <div className="min-w-0 bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-[0_2px_12px_rgba(24,24,27,0.03)]">
+            <div className="px-5 py-3.5 border-b border-stone-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-xs font-semibold text-stone-900 uppercase tracking-wider">
+                <Icon name="auto_awesome" size={18} className="text-primary" /> Transkripsi &amp; transliterasi
+              </span>
+              {analysis && (
+                <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
+                  {(["id", "en"] as const).map((l) => (
+                    <button key={l} type="button" onClick={() => setLang(l)} className={`px-2.5 py-1 rounded-md text-xs ${lang === l ? "bg-white text-stone-900 font-semibold shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>
+                      {l === "id" ? "Bahasa ID" : "English"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-5 space-y-5">
             {!analysis && !loading && !error && (
               <div className="rounded-2xl border border-terra-200 bg-amber-50/50 p-5 space-y-3">
                 <h2 className="font-serif text-lg font-semibold text-stone-900">Bagaimana ingin memulai?</h2>
@@ -379,88 +406,95 @@ export default function StudioPage() {
                   <p key={i} className="text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2">⚠ {w}</p>
                 ))}
 
-                <div className="flex gap-1 border-b border-stone-200">
-                  {([["teks", "Transkripsi"], ["terjemahan", "Terjemahan & Konteks"]] as const).map(([id, label]) => (
-                    <button key={id} type="button" onClick={() => setTab(id)}
-                      className={`px-3 py-2 text-sm -mb-px border-b-2 ${tab === id ? "border-terra-600 text-terra-800 font-semibold" : "border-transparent text-stone-500"}`}>
-                      {label}
+                {/* 1. Aksara */}
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-amberink-700 uppercase tracking-wider">1. Aksara Bali (Unicode)</h3>
+                    <button type="button" onClick={() => copy("aksara", analysis.unicode_transcription)} disabled={!analysis.unicode_transcription}
+                      className="flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-primary px-2 py-0.5 rounded-md hover:bg-stone-100 disabled:opacity-40">
+                      <Icon name="content_copy" size={15} />{copied === "aksara" ? "Tersalin" : "Salin aksara"}
                     </button>
-                  ))}
-                </div>
+                  </div>
+                  <div className="font-bali p-4 rounded-xl bg-stone-50 border border-stone-200 text-2xl text-stone-900 leading-loose tracking-wide whitespace-pre-line min-h-[5rem] select-all">
+                    {analysis.unicode_transcription.trim() || <span className="font-sans text-sm text-stone-400 tracking-normal">Aksara muncul otomatis saat Anda mengetik transliterasi Latin di bawah.</span>}
+                  </div>
+                </section>
 
-                {tab === "teks" ? (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-1" onMouseDown={(e) => e.preventDefault()}>
-                      <span className="text-xs text-stone-500 mr-1">Sisipkan:</span>
+                {/* 2. Latin */}
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="text-xs font-semibold text-stone-900 uppercase tracking-wider">2. Transliterasi Latin <span className="normal-case font-normal text-stone-500">(dapat disunting)</span></h3>
+                    <div className="flex items-center gap-1" onMouseDown={(e) => e.preventDefault()}>
                       {["ā", "ī", "ū", "ĕ", "é", "ṭ", "ḍ", "ṇ", "ś", "ṣ"].map((ch) => (
-                        <button key={ch} type="button" onClick={() => insertChar(ch)}
-                          className="w-7 h-7 rounded border border-stone-300 bg-white text-sm hover:bg-amber-50">{ch}</button>
+                        <button key={ch} type="button" onClick={() => insertChar(ch)} className="px-1.5 py-0.5 text-[11px] font-mono rounded bg-stone-100 text-stone-900 hover:bg-stone-200">{ch}</button>
                       ))}
-                      <button type="button" onClick={() => setShowGuide(!showGuide)} className="ml-2 text-xs text-terra-700 underline">
-                        {showGuide ? "Tutup panduan" : "Panduan ejaan"}
-                      </button>
+                      <button type="button" onClick={() => setShowGuide(!showGuide)} className="ml-1 text-[11px] text-primary underline">{showGuide ? "Tutup" : "Panduan"}</button>
                     </div>
-                    {showGuide && (
-                      <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs text-stone-600 space-y-1">
-                        <p><b>Vokal:</b> a ā i ī u ū · e/é (taleng) · ĕ (pepet) · o · ai · au</p>
-                        <p><b>Konsonan:</b> k kh g gh ng c ch j jh ny ṭ ṭh ḍ ḍh ṇ t th d dh n p ph b bh m y r l w ś ṣ s h</p>
-                        <p><b>Tanda:</b> koma (,) = carik · titik (.) atau | = pasalinan</p>
-                        <p>Konsonan tanpa vokal di akhir suku: <b>ng</b>→cecek, <b>r</b>→surang, <b>h</b>→bisah; lainnya adeg-adeg. Konsonan beruntun membentuk gantungan. Hasil adalah pratinjau aturan konversi, bukan pengganti pemeriksaan pembaca aksara.</p>
+                  </div>
+                  {showGuide && (
+                    <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs text-stone-600 space-y-1">
+                      <p><b>Vokal:</b> a ā i ī u ū · e/é (taleng) · ĕ (pepet) · o · ai · au</p>
+                      <p><b>Konsonan:</b> k kh g gh ng c ch j jh ny ṭ ṭh ḍ ḍh ṇ t th d dh n p ph b bh m y r l w ś ṣ s h</p>
+                      <p><b>Tanda:</b> koma (,) = carik · titik (.) atau | = pasalinan</p>
+                      <p>Konsonan tanpa vokal di akhir suku: <b>ng</b>→cecek, <b>r</b>→surang, <b>h</b>→bisah; lainnya adeg-adeg. Konsonan beruntun membentuk gantungan. Hasil adalah pratinjau aturan konversi, bukan pengganti pemeriksaan pembaca aksara.</p>
+                    </div>
+                  )}
+                  {analysis.lines.map((l, i) => (
+                    <div key={i} onFocus={() => setActiveLine(i)}
+                      className={`rounded-xl border p-2.5 space-y-1.5 ${activeLine === i ? "border-stone-300 bg-amberink-50" : "border-stone-200"}`}>
+                      <div className="flex items-center justify-between text-[11px] text-stone-500">
+                        <span className="font-mono">Baris {l.index}</span>
+                        <span className="flex items-center gap-2">
+                          {analysis.model !== "manual" && l.confidence > 0 && <span className={band(l.confidence)[1]}>{band(l.confidence)[0]}</span>}
+                          <select value={l.block} onChange={(e) => commitLines(analysis.lines.map((x, k) => (k === i ? { ...x, block: e.target.value as Line["block"] } : x)))}
+                            className="border border-stone-200 rounded px-1 py-0.5 bg-white" aria-label="Blok">
+                            <option value="penuh">penuh</option><option value="kiri">kiri</option><option value="kanan">kanan</option>
+                          </select>
+                          <button type="button" onClick={() => removeLine(i)} className="text-stone-400 hover:text-primary" aria-label={`Hapus baris ${l.index}`}>hapus</button>
+                        </span>
                       </div>
-                    )}
-                    {analysis.lines.map((l, i) => (
-                      <div key={i} onFocus={() => setActiveLine(i)}
-                        className={`rounded-lg border p-2 space-y-1 ${activeLine === i ? "border-terra-400 bg-amber-50/50" : "border-stone-200"}`}>
-                        <div className="flex items-center justify-between text-xs text-stone-500">
-                          <span>Baris {l.index}</span>
-                          <span className="flex items-center gap-2">
-                            {analysis.model !== "manual" && l.confidence > 0 && <span className={band(l.confidence)[1]}>{band(l.confidence)[0]}</span>}
-                            <select value={l.block} onChange={(e) => commitLines(analysis.lines.map((x, k) => (k === i ? { ...x, block: e.target.value as Line["block"] } : x)))}
-                              className="border border-stone-200 rounded px-1 py-0.5 bg-white" aria-label="Blok">
-                              <option value="penuh">penuh</option><option value="kiri">kiri</option><option value="kanan">kanan</option>
-                            </select>
-                            <button type="button" onClick={() => removeLine(i)} className="text-red-500 hover:underline" aria-label={`Hapus baris ${l.index}`}>hapus</button>
-                          </span>
-                        </div>
-                        <textarea rows={1} data-latin={i} value={l.latin} placeholder="Transliterasi Latin, mis. ong awighnamastu"
-                          onChange={(e) => changeLatin(i, e.target.value)}
-                          className="w-full rounded border border-stone-200 px-2 py-1 text-sm resize-y" />
+                      <textarea rows={1} data-latin={i} value={l.latin} placeholder="mis. ong awighnamastu"
+                        onChange={(e) => changeLatin(i, e.target.value)}
+                        className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-serif italic text-base text-stone-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y placeholder:text-stone-400 placeholder:not-italic" />
+                      <details className="text-[11px] text-stone-500">
+                        <summary className="cursor-pointer hover:text-stone-800">Sunting aksara baris ini</summary>
                         <textarea rows={1} value={l.unicode} placeholder="Aksara Bali (otomatis dari Latin)"
                           onChange={(e) => changeUnicode(i, e.target.value)}
-                          className="font-bali w-full rounded border border-stone-200 px-2 py-1 text-lg resize-y bg-stone-50" />
-                      </div>
-                    ))}
-                    <button type="button" onClick={addLine} className="text-sm text-terra-700 underline">+ Tambah baris</button>
+                          className="font-bali mt-1 w-full rounded-lg border border-stone-200 px-2 py-1 text-lg resize-y bg-stone-50" />
+                      </details>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addLine} className="text-xs text-primary underline">+ Tambah baris</button>
+                </section>
+
+                {/* 3. Terjemahan */}
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-stone-900 uppercase tracking-wider">3. Terjemahan makna</h3>
+                    <button type="button" onClick={() => copy("teks", `${analysis.latin_transliteration}\n\n${lang === "id" ? analysis.translation.indonesian : analysis.translation.english}`)}
+                      className="flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-primary px-2 py-0.5 rounded-md hover:bg-stone-100">
+                      <Icon name="content_copy" size={15} />{copied === "teks" ? "Tersalin" : "Salin teks"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <h3 className="font-semibold text-stone-800">Bahasa Indonesia</h3>
-                      <textarea rows={4} value={analysis.translation.indonesian}
-                        onChange={(e) => { setAnalysis({ ...analysis, translation: { ...analysis.translation, indonesian: e.target.value } }); setEdited(true); }}
-                        className="w-full rounded border border-stone-200 px-2 py-1" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-stone-800">English</h3>
-                      <textarea rows={4} value={analysis.translation.english}
-                        onChange={(e) => { setAnalysis({ ...analysis, translation: { ...analysis.translation, english: e.target.value } }); setEdited(true); }}
-                        className="w-full rounded border border-stone-200 px-2 py-1" />
-                    </div>
-                    {analysis.philosophical_context && (
-                      <div className="rounded-lg bg-stone-50 p-3">
-                        <h3 className="font-semibold text-stone-800">Konteks (tafsiran AI)</h3>
-                        <p className="text-stone-600">{analysis.philosophical_context}</p>
-                      </div>
-                    )}
+                  <textarea rows={4} value={lang === "id" ? analysis.translation.indonesian : analysis.translation.english}
+                    placeholder={lang === "id" ? "Terjemahan Bahasa Indonesia…" : "English translation…"}
+                    onChange={(e) => { setAnalysis({ ...analysis, translation: { ...analysis.translation, [lang === "id" ? "indonesian" : "english"]: e.target.value } }); setEdited(true); }}
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3.5 text-sm text-stone-900 leading-relaxed focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                </section>
+
+                {analysis.philosophical_context && (
+                  <div className="p-4 rounded-xl bg-amberink-50 border border-amberink-200 space-y-1.5">
+                    <div className="flex items-center gap-2 text-amberink-700 text-xs font-semibold uppercase tracking-wider"><Icon name="menu_book" size={18} /> Konteks (tafsiran AI)</div>
+                    <p className="font-serif italic text-sm text-amber-950 leading-relaxed">{analysis.philosophical_context}</p>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-3 text-sm">
-                  <button type="button" className="px-4 py-1.5 rounded-full border border-terra-300 text-terra-800 hover:bg-terra-50"
+                <div className="flex flex-wrap gap-2 text-xs pt-1">
+                  <button type="button" className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 hover:border-stone-300"
                     onClick={() => downloadJson(`lontarai-${Date.now()}.json`, buildExport(
                       { title, owner, regency, village_banjar: banjar, era, source: "LontarAI Studio" }, analysis, edited))}>
                     ⬇ Unduh JSON
                   </button>
-                  <button type="button" className="px-4 py-1.5 rounded-full border border-terra-300 text-terra-800 hover:bg-terra-50" onClick={() => window.print()}>
+                  <button type="button" className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-900 font-medium hover:bg-stone-50 hover:border-stone-300" onClick={() => window.print()}>
                     🖨 Cetak / Simpan PDF
                   </button>
                 </div>
@@ -471,6 +505,7 @@ export default function StudioPage() {
                 </p>
               </>
             )}
+            </div>
           </div>
         </div>
       )}
