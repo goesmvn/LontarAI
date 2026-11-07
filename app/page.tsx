@@ -26,6 +26,57 @@ const SAMPLES = [
   { img: "/samples/wariga-gemet.jpg", tag: "Wariga Kalender", meta: "Karangasem • Abad 19", title: "Wariga Gemet Pawukon", text: "Sistem perhitungan astrologi kalender Bali, hari baik (dewasa ayu), dan ritme siklus kehidupan agraris.", pct: 94, ok: true, href: "/studio?sample=wariga" },
 ];
 
+
+const SLIDES = [
+  { tag: "Epigrafi Digital • Transliterasi", head: "Menghidupkan Kembali Hikmah Leluhur dengan", accent: "Bantuan Aksara", body: "Ketik transliterasi Latin per baris dan aksara Bali Unicode terbentuk otomatis. Zoom, kontras tinggi (Sauvola), terjemahan, lalu simpan privat atau publik.", cta: "Mulai Transkripsi", href: "/studio", cta2: "Jelajahi Peta Terbuka", href2: "/archive", icon: "document_scanner", pills: ["Sauvola adaptif", "Aksara Bali Unicode", "Draf AI opsional"] },
+  { tag: "Studio Batch • Multi-Cakepan", head: "Digitalisasi Massal Multi-Cakepan", accent: "Tanpa Repot", body: "Unggah puluhan lempir sekaligus, binarisasi otomatis, penomoran lempir, galeri status, lalu simpan ke Vault dalam satu aksi.", cta: "Eksplorasi Studio Batch", href: "/batch", cta2: "Lihat Studio Transkripsi", href2: "/studio", icon: "photo_library", pills: ["Unggah banyak lempir", "Auto-binarize", "Ekspor JSON"] },
+  { tag: "Privasi Tradisi • Hak Kustodian", head: "Kedaulatan Budaya Penuh:", accent: "Private Vault vs Open Heritage", body: "Naskah pingit tidak pernah tampil publik. Anda menetapkan akses setiap naskah dan dapat mencabutnya kapan saja.", cta: "Buat Brankas Griya", href: "/vault", cta2: "Komunitas Kustodian", href2: "/komunitas", icon: "lock", pills: ["Privat secara default", "Lokasi ±1 km", "Sertifikat kustodian"] },
+];
+
+function HeroSlider() {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setI((x) => (x + 1) % SLIDES.length), 7000);
+    return () => clearInterval(t);
+  }, [paused]);
+  const sl = SLIDES[i];
+  return (
+    <section className="relative bg-white border-b border-linen-line overflow-hidden" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20 grid lg:grid-cols-[1.2fr_1fr] gap-10 items-center min-h-[460px]">
+        <div key={i} className="animate-[fadein_.5s_ease]">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amberink-50 border border-amberink-200 text-amberink-700 text-xs font-semibold uppercase tracking-wider mb-6">
+            <Icon name="auto_stories" size={15} /> {sl.tag}
+          </span>
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 font-medium tracking-tight leading-[1.12]">
+            {sl.head} <span className="italic text-primary">{sl.accent}</span>
+          </h1>
+          <p className="mt-5 text-lg text-stone-600 leading-relaxed max-w-xl">{sl.body}</p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link href={sl.href} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-hover text-white font-medium text-sm shadow-sm transition-all">{sl.cta} <Icon name="arrow_forward" size={18} /></Link>
+            <Link href={sl.href2} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium text-sm border border-stone-200 transition-colors"><Icon name="explore" size={18} className="text-stone-500" /> {sl.cta2}</Link>
+          </div>
+        </div>
+        <div className="hidden lg:block">
+          <div className="relative rounded-3xl overflow-hidden border border-stone-200 shadow-lg bg-stone-900 aspect-[4/3]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={["/samples/taru-pramana.jpg", "/samples/babad-klungkung.jpg", "/samples/wariga-gemet.jpg"][i]} alt="" className="w-full h-full object-cover opacity-90" />
+            <div className="absolute inset-x-4 bottom-4 flex flex-wrap gap-2">
+              {sl.pills.map((p) => <span key={p} className="px-2.5 py-1 rounded-full bg-white/95 text-stone-800 text-[11px] font-semibold border border-stone-200 flex items-center gap-1"><Icon name="verified" size={13} className="text-emerald-600" />{p}</span>)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3">
+        <button type="button" aria-label="Sebelumnya" onClick={() => setI((i + SLIDES.length - 1) % SLIDES.length)} className="p-1.5 rounded-full border border-stone-200 bg-white hover:bg-stone-100"><Icon name="chevron_left" size={18} /></button>
+        {SLIDES.map((_, n) => <button key={n} type="button" aria-label={`Slide ${n + 1}`} onClick={() => setI(n)} className={`h-1.5 rounded-full transition-all ${n === i ? "w-8 bg-primary" : "w-3 bg-stone-300"}`} />)}
+        <button type="button" aria-label="Berikutnya" onClick={() => setI((i + 1) % SLIDES.length)} className="p-1.5 rounded-full border border-stone-200 bg-white hover:bg-stone-100"><Icon name="chevron_right" size={18} /></button>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<Item[]>([]);
@@ -39,30 +90,8 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="bg-white border-b border-linen-line">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-20 sm:pb-24">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amberink-50 border border-amberink-200 text-amberink-700 text-xs font-semibold uppercase tracking-wider mb-6">
-              <Icon name="auto_stories" size={15} /> Arsip Digital Warisan Leluhur
-            </span>
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 font-medium tracking-tight leading-[1.15]">
-              Menjaga Aksara Kuno, Tetap Hidup di Era Digital
-            </h1>
-            <p className="mt-5 text-lg sm:text-xl text-stone-600 leading-relaxed">
-              Platform cerdas untuk membaca, menerjemahkan, dan melestarikan daun lontar Bali dengan mudah.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/studio" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-terra-600 hover:bg-terra-700 text-white font-medium text-sm shadow-sm hover:shadow transition-all">
-                Mulai Scan Naskah <Icon name="arrow_forward" size={18} />
-              </Link>
-              <Link href="/archive" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium text-sm border border-stone-200 transition-colors">
-                <Icon name="explore" size={18} className="text-stone-500" /> Jelajahi Peta Koleksi
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero slider */}
+      <HeroSlider />
 
       {/* Real stats */}
       <section className="border-b border-linen-line bg-stone-50/60">
@@ -95,6 +124,58 @@ export default function Home() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Modern epigraphic architecture */}
+      <section className="py-14 bg-stone-50 border-b border-linen-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mb-8">
+            <span className="text-xs font-semibold tracking-wider uppercase text-amberink-700">Arsitektur Epigrafik Modern</span>
+            <h2 className="font-serif text-2xl sm:text-3xl font-medium text-stone-900 mt-1">Teknologi khusus anatomi aksara Bali</h2>
+            <p className="text-sm text-stone-600 mt-2">Dirancang untuk menjawab kerapuhan fisik lontar serta variasi goresan tangan pujangga lintas abad.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              ["document_scanner", "Transliterasi Instan", "Ketik ejaan Latin, aksara Bali Unicode terbentuk otomatis dengan aturan gantungan, gempelan, dan sandhangan.", "Coba transliterasi langsung", "/studio"],
+              ["photo_library", "Studio Batch Scan Massal", "Proses satu cakepan penuh (puluhan lempir) beruntun dengan binarisasi Sauvola otomatis dan penomoran lempir.", "Buka Batch Studio", "/batch"],
+              ["map", "Peta Sebaran Lontar", "Geolokasi naskah berdasarkan griya, puri, dan banjar adat. Lokasi publik dikaburkan ±1 km.", "Buka peta interaktif", "/archive"],
+            ].map(([icon, t, d, cta, href]) => (
+              <div key={t} className="bg-white rounded-2xl border border-stone-200 p-6 flex flex-col gap-3">
+                <div className="w-11 h-11 rounded-xl bg-terra-50 text-primary flex items-center justify-center"><Icon name={icon} size={24} /></div>
+                <h3 className="font-serif text-xl font-medium text-stone-900">{t}</h3>
+                <p className="text-sm text-stone-600 leading-relaxed flex-1">{d}</p>
+                <Link href={href} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{cta} <Icon name="chevron_right" size={16} /></Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Privacy: Vault vs Open Heritage */}
+      <section className="py-14 bg-white border-b border-linen-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-10 items-center">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase text-amberink-700"><Icon name="lock" size={15} /> Privasi Tradisi • Hak Kustodian</span>
+            <h2 className="font-serif text-3xl text-stone-900 font-medium mt-2 leading-tight">Kedaulatan Budaya Penuh: Private Vault <span className="italic text-primary">vs</span> Open Heritage</h2>
+            <p className="text-sm text-stone-600 mt-3 leading-relaxed">Menghormati pakem sakral naskah pingit. Keluarga dan griya memiliki hak menetapkan akses: simpan privat, atau rilis terbuka untuk riset akademik filologi.</p>
+            <Link href="/vault" className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-full bg-stone-900 hover:bg-primary text-white text-sm font-medium transition-colors">Buat Brankas Griya <Icon name="arrow_forward" size={16} /></Link>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-terra-200 bg-terra-50/50 p-5">
+              <Icon name="encrypted" size={26} className="text-primary" />
+              <h3 className="font-serif text-lg font-semibold text-stone-900 mt-2">Brankas Terkunci (Pingit)</h3>
+              <p className="text-xs text-stone-600 mt-1 leading-relaxed">Akses privat hanya pemilik. Naskah pingit tidak pernah tampil di arsip publik.</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+              <Icon name="public" size={26} className="text-emerald-700" />
+              <h3 className="font-serif text-lg font-semibold text-stone-900 mt-2">Korpus Terbuka (Open Heritage)</h3>
+              <p className="text-xs text-stone-600 mt-1 leading-relaxed">Dibagikan atas persetujuan pemilik untuk telaah filologi, dengan atribusi dan tombol cabut.</p>
+            </div>
+            <div className="sm:col-span-2 rounded-2xl border border-amberink-200 bg-amberink-50 p-4 flex items-center gap-3 text-xs text-amberink-800">
+              <Icon name="workspace_premium" size={22} /> Sertifikat Hak Kustodian tersedia di Private Vault untuk setiap naskah Anda.
+            </div>
+          </div>
         </div>
       </section>
 

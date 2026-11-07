@@ -9,7 +9,9 @@ import { useSession } from "@/lib/useSession";
 const LINKS = [
   { href: "/", label: "Overview", short: "Beranda", icon: "home", exact: true },
   { href: "/studio", label: "Studio Transkripsi", short: "Studio", icon: "document_scanner" },
+  { href: "/batch", label: "Batch Scan", short: "Batch", icon: "photo_library" },
   { href: "/archive", label: "Peta Sebaran", short: "Peta", icon: "explore" },
+  { href: "/komunitas", label: "Komunitas", short: "Komunitas", icon: "diversity_3" },
   { href: "/vault", label: "Private Vault", short: "Brankas", icon: "inventory_2" },
 ];
 
@@ -27,17 +29,17 @@ export default function Navbar() {
               <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-serif text-xl font-semibold group-hover:bg-primary transition-colors">L</div>
               <span className="font-serif text-2xl font-semibold tracking-tight text-stone-900">LontarAI</span>
             </Link>
-            <span className="hidden sm:inline px-2.5 py-1 rounded-full bg-terra-100 text-primary text-xs font-medium">Bali DigiFest 2026</span>
-            <span className="hidden xl:inline border-l border-stone-200 pl-3 font-mono text-[11px] text-stone-500">Aksara Epigraphic Platform</span>
+            <span className="hidden 2xl:inline whitespace-nowrap px-2.5 py-1 rounded-full bg-terra-100 text-primary text-xs font-medium">Bali DigiFest 2026</span>
+            <span className="hidden 2xl:inline border-l border-stone-200 pl-3 font-mono text-[11px] text-stone-500">Aksara Epigraphic Platform</span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1 bg-stone-100 p-1 rounded-full border border-stone-200">
+          <nav className="hidden lg:flex items-center gap-0.5 bg-stone-100 p-1 rounded-full border border-stone-200">
             {LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
                 aria-current={active(l) ? "page" : undefined}
-                className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
+                className={`px-3 py-1.5 whitespace-nowrap rounded-full text-[13px] transition-colors ${
                   active(l) ? "bg-primary text-white font-medium shadow-sm" : "text-stone-600 font-medium hover:text-stone-900"
                 }`}
               >
@@ -77,10 +79,10 @@ export default function Navbar() {
       </header>
 
       {/* Mobile bottom tabs */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-[2000] bg-[rgba(250,248,245,0.9)] backdrop-blur-[8px] border-t border-stone-200">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-[2000] bg-[rgba(250,248,245,0.9)] backdrop-blur-[8px] border-t border-stone-200">
         <div className="flex items-center justify-around h-16">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className={`flex flex-col items-center justify-center w-16 h-12 ${active(l) ? "text-primary font-semibold" : "text-stone-500"}`}>
+            <Link key={l.href} href={l.href} className={`flex flex-col items-center justify-center w-14 h-12 ${active(l) ? "text-primary font-semibold" : "text-stone-500"}`}>
               <Icon name={l.icon} size={22} />
               <span className="text-[11px] mt-0.5">{l.short}</span>
             </Link>

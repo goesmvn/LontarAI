@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   if (!isSupabaseConfigured()) return fail("Penyimpanan belum dikonfigurasi.", 503);
   const token = bearerToken(request.headers);
   if (!token) return fail("Masuk terlebih dahulu untuk menyimpan naskah.", 401);
-  if (!rateLimit(`save:${clientIp(request.headers)}`, 10, 10 * 60_000)) {
+  if (!rateLimit(`save:${clientIp(request.headers)}`, 60, 10 * 60_000)) {
     return fail("Terlalu banyak penyimpanan. Coba lagi nanti.", 429);
   }
 

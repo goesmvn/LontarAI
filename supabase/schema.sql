@@ -108,3 +108,17 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT id FROM manuscripts WHERE slug = p_slug AND visibility = 'public' AND is_pingit = FALSE
 $$;
 GRANT EXECUTE ON FUNCTION public_manuscript_id(TEXT) TO anon, authenticated;
+
+-- ============ Komunitas Kustodian (linimasa) ============
+CREATE TABLE IF NOT EXISTS community_posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  author_name text NOT NULL CHECK (char_length(author_name) BETWEEN 1 AND 80),
+  body text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000),
+  manuscript_id uuid REFERENCES manuscripts(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE community_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY posts_read_all ON community_posts FOR SELECT USING (true);
+CREATE POLICY posts_insert_own ON community_posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY posts_delete_own ON community_posts FOR DELETE USING (auth.uid() = user_id);
