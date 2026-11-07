@@ -7,6 +7,7 @@ export default function Footer() {
         <p className="text-stone-500 text-xs mt-2">
           Hasil AI adalah draf dan bukan tafsir otoritatif. Sampel naskah: Pusat Dokumentasi Dinas Kebudayaan Provinsi Bali.
         </p>
+        <a href="/admin" className="inline-block mt-2 text-xs text-stone-400 hover:text-terra-700">Admin</a>
       </div>
     </footer>
   );

@@ -12,6 +12,11 @@ Platform web untuk **mendigitalkan, membaca (draf AI), dan mengarsipkan naskah l
 - **Arsip Publik:** peta + daftar, filter rumpun/kabupaten, pencarian judul, modal pratinjau.
 - **Keamanan:** akses publik hanya lewat view `public_manuscripts` (kolom aman), RLS untuk pemilik, bucket `vault` privat dan `archive` publik, EXIF dibuang di klien, validasi server, rate limit.
 
+## Panel Admin (`/admin`)
+Akses: email yang terdaftar di `ADMIN_EMAILS` (pisahkan koma) + `SUPABASE_SERVICE_ROLE_KEY` di server (jangan pernah ke klien). Fitur: ringkasan statistik, daftar naskah **publik** (tandai terverifikasi, turunkan ke Vault pemiliknya), dan antrean laporan masyarakat (pingit, isi keliru, hak/izin). Isi Private Vault tidak pernah dibaca admin; hanya jumlahnya.
+
+Masyarakat dapat melaporkan naskah publik lewat tombol "Laporkan naskah ini"; naskah punya halaman tautan `/archive/:slug`. Beranda menampilkan statistik nyata.
+
 ## Belum ada (lihat PRD §14)
 Deteksi otomatis lempir/baris, deskew, Sauvola di server, ekspor PDF, status "terverifikasi", multi-lempir per cakepan, evaluasi CER. Peningkatan kontras di Studio hanya filter pratinjau.
 

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const STEPS = [
@@ -6,7 +9,14 @@ const STEPS = [
   { icon: "🔒", title: "Pilih privat atau publik", text: "Simpan di Private Vault atau bagikan ke Arsip Publik dengan persetujuan Anda. Naskah pingit tidak pernah dipublikasikan." },
 ];
 
+type Stats = { configured: boolean; publicCount?: number; regencies?: number; totalCount?: number | null };
+
 export default function Home() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  useEffect(() => {
+    fetch("/api/stats").then((r) => r.json()).then(setStats).catch(() => {});
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <section className="text-center">
@@ -22,6 +32,21 @@ export default function Home() {
           <Link href="/archive" className="px-7 py-3 rounded-full bg-white border border-terra-300 text-terra-800 font-semibold hover:bg-terra-50">Jelajahi Arsip</Link>
         </div>
       </section>
+
+      {stats?.configured && (
+        <section className="grid grid-cols-3 gap-3 mt-12 text-center">
+          {[
+            [stats.publicCount ?? 0, "Naskah di arsip publik"],
+            [stats.regencies ?? 0, "Dari 9 kabupaten/kota"],
+            [stats.totalCount ?? "—", "Naskah terlindungi di Vault"],
+          ].map(([n, label]) => (
+            <div key={String(label)} className="rounded-2xl bg-terra-50 border border-terra-100 py-4">
+              <div className="text-2xl font-bold text-terra-800">{n}</div>
+              <div className="text-xs text-stone-600 px-1">{label}</div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="grid sm:grid-cols-3 gap-4 mt-14">
         {STEPS.map((s) => (

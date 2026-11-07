@@ -87,3 +87,24 @@ CREATE POLICY archive_owner_write ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'archive' AND (storage.foldername(name))[1] = auth.uid()::text);
 CREATE POLICY archive_owner_delete ON storage.objects FOR DELETE
   USING (bucket_id = 'archive' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Community reports on public manuscripts (takedown / wrong content / sacred content).
+-- Anyone may submit; nobody can read them except via the service role (admin API).
+CREATE TABLE manuscript_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  manuscript_id UUID NOT NULL REFERENCES manuscripts(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL CHECK (reason IN ('pingit','salah_isi','hak_cipta','lainnya')),
+  details TEXT CHECK (char_length(details) <= 1000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ
+);
+ALTER TABLE manuscript_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY anyone_can_report ON manuscript_reports FOR INSERT WITH CHECK (status = 'open');
+
+-- Slug -> id lookup for reporting, exposing nothing else.
+CREATE FUNCTION public_manuscript_id(p_slug TEXT) RETURNS UUID
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT id FROM manuscripts WHERE slug = p_slug AND visibility = 'public' AND is_pingit = FALSE
+$$;
+GRANT EXECUTE ON FUNCTION public_manuscript_id(TEXT) TO anon, authenticated;

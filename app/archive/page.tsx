@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import ManuscriptDetail from "@/components/ManuscriptDetail";
 import type { ArchiveItem } from "@/components/ArchiveMap";
 import { CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 
@@ -80,18 +82,8 @@ export default function ArchivePage() {
               <h2 className="text-lg font-bold text-terra-800">{selected.title}</h2>
               <button type="button" onClick={() => setSelected(null)} aria-label="Tutup" className="text-stone-500">✕</button>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.image_url} alt={selected.title} className="w-full rounded-lg" />
-            <p className="text-xs text-stone-500">
-              {CATEGORY_LABELS[selected.category]} · Area {selected.village_banjar}, {selected.regency}
-              {selected.owner_name ? ` · Pengempu: ${selected.owner_name}` : ""}
-              {selected.estimated_creation_era ? ` · ${selected.estimated_creation_era}` : ""}
-            </p>
-            <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
-              {selected.transcription_status === "terverifikasi" ? "Terverifikasi" : selected.transcription_status === "dikoreksi" ? "Dikoreksi manusia" : "Draf AI, belum diverifikasi"}
-            </span>
-            {selected.latin_transliteration && <div><h3 className="font-semibold text-sm">Transliterasi</h3><p className="text-sm text-stone-700 whitespace-pre-line">{selected.latin_transliteration}</p></div>}
-            {selected.translation_id && <div><h3 className="font-semibold text-sm">Terjemahan</h3><p className="text-sm text-stone-700 whitespace-pre-line">{selected.translation_id}</p></div>}
+            <ManuscriptDetail item={selected} />
+            <Link href={`/archive/${selected.slug}`} className="text-xs text-terra-700 underline">Buka halaman naskah (tautan dapat dibagikan)</Link>
           </div>
         </div>
       )}
