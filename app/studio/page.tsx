@@ -129,14 +129,23 @@ export default function StudioPage() {
     analyze(enhancedImg);
   };
 
-  const loadSample = async () => {
-    const res = await fetch("/samples/krakah-sanggaraha.webp");
+  const SAMPLE_LIST = [
+    { id: "krakah", label: "Sampel 1: Krakah (Lempir)", file: "/samples/krakah-sanggaraha.webp", title: "Krakah Sanggaraha" },
+    { id: "taru", label: "Sampel 2: Usada (Pengobatan)", file: "/samples/taru-pramana.jpg", title: "Usada Taru Pramana" },
+    { id: "babad", label: "Sampel 3: Babad (Sejarah)", file: "/samples/babad-klungkung.jpg", title: "Babad Dalem Klungkung" },
+    { id: "wariga", label: "Sampel 4: Wariga (Astronomi)", file: "/samples/wariga-gemet.jpg", title: "Wariga Gemet Pawukon" },
+  ];
+  const [activeSample, setActiveSample] = useState<string | null>(null);
+  const loadSample = async (id = "krakah") => {
+    const sm = SAMPLE_LIST.find((x) => x.id === id) ?? SAMPLE_LIST[0];
+    const res = await fetch(sm.file);
+    setActiveSample(sm.id);
     load(await res.blob());
   };
 
   // Deep link from the landing page: /studio?sample=krakah
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("sample") === "krakah") loadSample();
+    { const sp = new URLSearchParams(window.location.search).get("sample"); if (sp) loadSample(sp); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -261,16 +270,24 @@ export default function StudioPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-6 border-b border-linen-line">
         <div>
-          <h1 className="font-serif text-2xl lg:text-3xl text-stone-900 font-semibold">Studio Transkripsi</h1>
-          <p className="text-sm text-stone-500 mt-1">Unggah foto lempir lontar atau pilih sampel.</p>
+          <div className="flex items-center gap-3 whitespace-nowrap">
+            <h1 className="font-serif text-3xl lg:text-4xl text-stone-900 font-semibold">Studio Transkripsi</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 font-mono text-xs text-stone-600">ViT 1.5</span>
+          </div>
+          <p className="text-sm text-stone-500 mt-1">Unggah foto lempir lontar atau pilih sampel uji coba.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={loadSample} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-stone-800 border border-linen-line shadow-sm hover:bg-linen">
-            Sampel: Krakah Sanggaraha
-          </button>
-          <label className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-linen border border-linen-line text-stone-800 text-xs font-semibold shadow-sm cursor-pointer">
-            <Icon name="add_photo_alternate" size={18} className="text-primary" /> Unggah foto naskah
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) load(f); e.target.value = ""; }} />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200">
+            {SAMPLE_LIST.map((sm) => (
+              <button key={sm.id} type="button" onClick={() => loadSample(sm.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs ${activeSample === sm.id ? "bg-white text-stone-900 font-medium shadow-sm" : "text-stone-600 hover:text-stone-900"}`}>
+                {sm.label}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-linen border border-linen-line text-stone-800 text-xs font-semibold shadow-sm cursor-pointer">
+            <Icon name="add_photo_alternate" size={18} className="text-primary" /> + Unggah Foto Naskah
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setActiveSample(null); load(f); } e.target.value = ""; }} />
           </label>
         </div>
       </div>
@@ -287,7 +304,7 @@ export default function StudioPage() {
               <input type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) load(f); e.target.value = ""; }} />
             </label>
-            <button type="button" onClick={loadSample} className="px-5 py-2.5 rounded-full bg-white border border-terra-300 text-terra-800 font-medium hover:bg-amber-50">
+            <button type="button" onClick={() => loadSample()} className="px-5 py-2.5 rounded-full bg-white border border-terra-300 text-terra-800 font-medium hover:bg-amber-50">
               Coba sampel: Krakah Sanggaraha
             </button>
           </div>

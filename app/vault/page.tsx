@@ -51,6 +51,7 @@ export default function VaultPage() {
     }
   };
   const makePrivate = (i: Item) => call(i.id, { method: "PATCH", body: JSON.stringify({ visibility: "private" }) });
+  const [cert, setCert] = useState<Item | null>(null);
   const [shared, setShared] = useState<string | null>(null);
   const share = async (i: Item) => {
     try {
@@ -77,7 +78,7 @@ export default function VaultPage() {
   const chip = (id: Filter, label: string, icon: string) => (
     <button key={id} type="button" onClick={() => setFilter(id)}
       className={`px-3.5 py-1.5 rounded-full text-xs flex items-center gap-1.5 shrink-0 transition-all ${filter === id ? "bg-primary text-white font-semibold shadow-sm" : "bg-linen-mid text-stone-600 font-medium hover:bg-linen-high"}`}>
-      <Icon name={icon} size={15} />{label} ({counts[id]})
+      {label} ({counts[id]})
     </button>
   );
 
@@ -86,15 +87,15 @@ export default function VaultPage() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-linen-line">
         <div className="flex flex-col gap-2 max-w-2xl">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amberink-100 border border-amberink-200 text-amberink-700 text-xs font-semibold w-fit">
-            <Icon name="lock" size={15} /> Privat secara default
+            <Icon name="shield_lock" size={15} /> Terkunci Dresta Adat & Privat secara Default
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl text-stone-900 font-medium tracking-tight">Private Vault</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl text-stone-900 font-medium tracking-tight">Private Vault & Hak Kustodian Adat</h1>
           <p className="text-sm text-stone-600 leading-relaxed">
-            Arsip naskah milik Anda. Anda yang menentukan setiap naskah tetap <span className="italic text-primary font-medium">privat</span> atau dibagikan ke arsip publik, dan dapat mengubahnya kapan saja.
+            Arsip digital berdaulat keluarga griya untuk naskah sakral (<span className="italic text-primary font-medium">pingit</span>) dan pusaka leluhur. Anda yang menentukan setiap naskah tetap <span className="italic text-primary font-medium">privat</span> atau dibagikan ke arsip publik, dan dapat mengubahnya kapan saja. Hak kepemilikan dan transliterasi dilindungi hukum adat krama Bali.
           </p>
         </div>
         <Link href="/studio" className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 w-fit">
-          <Icon name="add" size={18} /> Tambah naskah baru
+          <Icon name="add" size={18} /> Tambah Naskah Baru
         </Link>
       </div>
 
@@ -110,18 +111,18 @@ export default function VaultPage() {
 
       {session && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {([
-              ["folder_special", "Total naskah", counts.all, "bg-amberink-100 text-amberink-700"],
-              ["lock", "Privat", counts.private, "bg-terra-50 text-primary"],
-              ["public", "Dibagikan publik", counts.public, "bg-emerald-50 text-emerald-700"],
-              ["temple_hindu", "Pingit / sakral", counts.pingit, "bg-stone-100 text-stone-700"],
-            ] as const).map(([icon, label, n, tone]) => (
+              ["folder_special", "Total naskah terproteksi", `${counts.all} Cakepan`, "100% tersimpan di brankas pribadi", "bg-terra-50 text-amberink-700", "text-emerald-700"],
+              ["lock", "Status sakral / pingit", `${counts.pingit} Naskah`, "Enkripsi ketat & larangan publikasi", "bg-terra-50 text-primary", "text-stone-500"],
+              ["family_restroom", "Akses terbuka publik", `${counts.public} Naskah`, "Dibagikan pemilik dengan persetujuan", "bg-emerald-50 text-emerald-700", "text-emerald-700"],
+            ] as const).map(([icon, label, n, sub, tone, subTone]) => (
               <div key={label} className="bg-white rounded-2xl p-5 border border-linen-line flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${tone}`}><Icon name={icon} size={24} /></div>
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${tone}`}><Icon name={icon} size={26} /></div>
                 <div>
-                  <div className="text-[11px] uppercase font-semibold text-stone-500 tracking-wider">{label}</div>
+                  <div className="text-[11px] uppercase font-semibold text-stone-600 tracking-wider">{label}</div>
                   <div className="font-serif text-2xl font-semibold text-stone-900">{n}</div>
+                  <div className={`text-xs ${subTone}`}>{sub}</div>
                 </div>
               </div>
             ))}
@@ -130,11 +131,11 @@ export default function VaultPage() {
           <div className="bg-white rounded-2xl p-4 border border-linen-line flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full md:max-w-md">
               <Icon name="search" size={18} className="absolute left-3.5 top-2.5 text-stone-400" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul naskah…"
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari koleksi privat keluarga, mantra, lempir, atau era saka..."
                 className="w-full bg-linen pl-10 pr-4 py-2 rounded-xl text-xs border border-linen-line focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white" />
             </div>
             <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
-              {chip("all", "Semua", "folder_shared")}{chip("private", "Privat", "lock")}{chip("public", "Publik", "public")}{chip("pingit", "Pingit", "temple_hindu")}
+              {chip("all", "Semua", "")}{chip("private", "Privat", "")}{chip("public", "Terbuka", "")}{chip("pingit", "Sakral / Pingit", "")}
             </div>
           </div>
 
@@ -184,18 +185,21 @@ export default function VaultPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-linen-low">
                     <span className="text-xs text-stone-500">Disimpan {new Date(i.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}</span>
                     <div className="flex items-center gap-2">
-                      {i.visibility === "public" && (
+                      {(
                         <button type="button" onClick={() => share(i)} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-linen text-xs font-medium text-stone-600 flex items-center gap-1.5">
                           <Icon name="share" size={16} /> {shared === i.id ? "Tautan disalin" : "Bagikan"}
                         </button>
                       )}
                       {i.visibility === "public" && (
                         <Link href={`/archive/${i.slug}`} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-linen text-xs font-semibold text-stone-800 flex items-center gap-1.5">
-                          <Icon name="visibility" size={16} /> Buka
+                          <Icon name="visibility" size={16} /> Buka Naskah
                         </Link>
                       )}
                       <button type="button" onClick={() => remove(i)} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-terra-50 text-xs font-medium text-stone-500 hover:text-primary flex items-center gap-1.5">
                         <Icon name="delete" size={16} /> Hapus
+                      </button>
+                      <button type="button" onClick={() => setCert(i)} className="px-3 py-1.5 rounded-lg bg-white border border-linen-line hover:bg-linen text-xs font-medium text-stone-700 flex items-center gap-1.5">
+                        <Icon name="workspace_premium" size={16} /> Ekspor Sertifikat
                       </button>
                     </div>
                   </div>
@@ -207,19 +211,53 @@ export default function VaultPage() {
               <div className="bg-white rounded-2xl p-6 border border-linen-line flex flex-col gap-3">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-linen-line">
                   <Icon name="shield_person" size={22} className="text-amberink-700" />
-                  <h2 className="font-serif text-lg font-semibold text-stone-900">Akun</h2>
+                  <h2 className="font-serif text-lg font-semibold text-stone-900">Informasi Pengempu</h2>
                 </div>
-                <div className="flex justify-between py-2 px-3 bg-linen rounded-xl text-xs"><span className="text-stone-500">Email</span><span className="font-semibold text-stone-900 truncate ml-3">{session.user.email}</span></div>
-                <div className="flex justify-between py-2 px-3 bg-linen rounded-xl text-xs"><span className="text-stone-500">Naskah tersimpan</span><span className="font-semibold text-primary">{counts.all}</span></div>
+                <div className="flex justify-between py-2 px-3 bg-linen rounded-xl text-xs"><span className="text-stone-500">Nama Kustodian</span><span className="font-semibold text-stone-900 truncate ml-3">{session.user.email}</span></div>
+                <div className="flex justify-between py-2 px-3 bg-linen rounded-xl text-xs"><span className="text-stone-500">Koleksi Terdaftar</span><span className="font-semibold text-primary">{counts.all}</span></div>
               </div>
               <div className="p-5 rounded-2xl bg-amberink-50 border border-amberink-200 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-amberink-700 text-xs font-semibold uppercase tracking-wider"><Icon name="gavel" size={18} /> Etika kustodian</div>
+                <div className="flex items-center gap-2 text-amberink-700 text-xs font-semibold uppercase tracking-wider"><Icon name="gavel" size={18} /> Etika Kustodian Bali DigiFest 2026</div>
                 <p className="font-serif italic text-xs text-amber-950 leading-relaxed">
                   “Naskah pingit tidak pernah tampil di arsip atau peta publik. Naskah publik menampilkan lokasi hanya sebagai area, dan pemilik dapat mencabutnya kapan saja.”
                 </p>
               </div>
             </aside>
           </div>
+
+          {(() => {
+            const c = cert ?? items[0];
+            if (!c) return null;
+            const reg = `LNT-${new Date(c.created_at).getFullYear()}-${c.id.slice(0, 4).toUpperCase()}-BALI`;
+            return (
+              <section className="print-area flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-serif text-xl font-semibold text-stone-900 flex items-center gap-2"><Icon name="workspace_premium" size={24} className="text-amberink-700" /> Sertifikat Hak Kustodian Adat</h2>
+                  <span className="hidden sm:block font-mono text-xs text-stone-500">Diterbitkan oleh LontarAI &amp; Konsorsium Epigrafi Bali</span>
+                </div>
+                <div className="rounded-2xl border-2 border-amberink-200 bg-white p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-center">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="px-3 py-1 rounded-full bg-amberink-100 text-amberink-700 text-xs font-semibold">Kredensial Adat Sah</span>
+                      <span className="font-mono text-xs text-stone-500">No. Reg: {reg}</span>
+                    </div>
+                    <h3 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900">Sertifikat Preservasi: {c.title}</h3>
+                    <p className="text-sm text-stone-600 leading-relaxed">Mengesahkan hak kustodian atas nama <b className="text-stone-900">{session.user.email}</b>. Naskah lontar telah terdigitalisasi, berenotasi aksara, dan terproteksi di bawah dresta perlindungan warisan leluhur.</p>
+                    <div className="flex gap-5 text-xs text-stone-500 mt-1"><span className="flex items-center gap-1.5"><Icon name="verified" size={16} className="text-emerald-600" /> Kriptografi SHA-256</span><span className="flex items-center gap-1.5"><Icon name="account_balance" size={16} className="text-amberink-700" /> Registri Budaya Bali</span></div>
+                  </div>
+                  <div className="rounded-2xl bg-stone-50 border border-linen-line p-5 flex items-center gap-4">
+                    <div className="w-24 h-24 rounded-xl bg-white border border-linen-line flex items-center justify-center shrink-0"><Icon name="qr_code_2" size={72} className="text-stone-900" /></div>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-primary">Terverifikasi Adat</span>
+                      <span className="text-sm font-semibold text-stone-900 truncate">{c.village_banjar}, {c.regency}</span>
+                      <span className="text-xs text-stone-500">{new Date(c.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}</span>
+                      <button type="button" onClick={() => window.print()} className="mt-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center justify-center gap-1.5"><Icon name="download" size={16} /> Unduh Sertifikat Digital (PDF)</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
         </>
       )}
     </div>

@@ -48,3 +48,6 @@ body {
 }
 ::selection { background: #ffdad4; color: #a83223; }
 input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 1px solid #a83223; outline-offset: 0; }
+
+.leaflet-tile-pane { filter: grayscale(0.85) sepia(0.22) brightness(1.04) contrast(0.92); }
+.leaflet-container { background: #f3efea; font-family: inherit; }

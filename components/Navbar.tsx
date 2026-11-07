@@ -21,18 +21,15 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-[2000] bg-[rgba(250,248,245,0.85)] backdrop-blur-[8px] border-b border-stone-200">
-        <div className="h-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Logo LontarAI" className="w-9 h-9 rounded-lg object-contain" />
-            <span className="flex flex-col leading-none">
-              <span className="flex items-center gap-2">
-                <span className="font-serif text-xl font-semibold tracking-tight text-stone-900">LontarAI</span>
-                <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-amberink-100 text-amberink-700 text-[11px] font-semibold">Bali DigiFest 2026</span>
-              </span>
-              <span className="hidden lg:block font-mono text-[10px] text-stone-500 mt-1">Aksara Epigraphic Intelligence</span>
-            </span>
-          </Link>
+        <div className="h-16 w-full px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-serif text-xl font-semibold group-hover:bg-primary transition-colors">L</div>
+              <span className="font-serif text-2xl font-semibold tracking-tight text-stone-900">LontarAI</span>
+            </Link>
+            <span className="hidden sm:inline px-2.5 py-1 rounded-full bg-terra-100 text-primary text-xs font-medium">Bali DigiFest 2026</span>
+            <span className="hidden xl:inline border-l border-stone-200 pl-3 font-mono text-[11px] text-stone-500">Aksara Epigraphic Platform</span>
+          </div>
 
           <nav className="hidden md:flex items-center gap-1 bg-stone-100 p-1 rounded-full border border-stone-200">
             {LINKS.map((l) => (
@@ -40,8 +37,8 @@ export default function Navbar() {
                 key={l.href}
                 href={l.href}
                 aria-current={active(l) ? "page" : undefined}
-                className={`px-4 py-1.5 rounded-full text-xs transition-colors ${
-                  active(l) ? "bg-primary text-white font-semibold shadow-sm" : "text-stone-600 font-medium hover:text-stone-900"
+                className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
+                  active(l) ? "bg-primary text-white font-medium shadow-sm" : "text-stone-600 font-medium hover:text-stone-900"
                 }`}
               >
                 {l.label}
@@ -49,27 +46,38 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {ready && configured && session ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-linen-line">
-                <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold" title={session.user.email ?? ""}>
-                  {(session.user.email ?? "?")[0].toUpperCase()}
-                </span>
-                <button type="button" onClick={() => getBrowserSupabase().auth.signOut()} className="hidden sm:block text-xs text-stone-500 hover:text-primary">
-                  Keluar
-                </button>
-              </div>
-            ) : (
-              <Link href="/masuk" className="px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-semibold hover:bg-primary transition-colors">
-                Masuk
-              </Link>
-            )}
+          <div className="flex items-center gap-3 shrink-0">
+            <button aria-label="Notifikasi" className="p-2 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors" type="button">
+              <Icon name="notifications" size={20} />
+            </button>
+            <div className="flex items-center gap-2.5 pl-3 border-l border-stone-200">
+              {ready && configured && session ? (
+                <>
+                  <span className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold ring-2 ring-stone-100" title={session.user.email ?? ""}>
+                    {(session.user.email ?? "?")[0].toUpperCase()}
+                  </span>
+                  <div className="hidden lg:flex flex-col leading-tight">
+                    <span className="text-sm font-semibold text-stone-900 max-w-[140px] truncate">{session.user.email}</span>
+                    <button type="button" onClick={() => getBrowserSupabase().auth.signOut()} className="text-left font-mono text-[11px] text-stone-500 hover:text-primary">Keluar</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/samples/avatar.jpg" alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-stone-100" />
+                  <Link href="/masuk" className="hidden lg:flex flex-col leading-tight">
+                    <span className="text-sm font-semibold text-stone-900">Tamu</span>
+                    <span className="font-mono text-[11px] text-stone-500">Masuk akun</span>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Mobile bottom tabs */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-[2000] bg-[rgba(250,248,245,0.92)] backdrop-blur-[8px] border-t border-stone-200">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-[2000] bg-[rgba(250,248,245,0.9)] backdrop-blur-[8px] border-t border-stone-200">
         <div className="flex items-center justify-around h-16">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className={`flex flex-col items-center justify-center w-16 h-12 ${active(l) ? "text-primary font-semibold" : "text-stone-500"}`}>
