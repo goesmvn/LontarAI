@@ -69,6 +69,9 @@ export default function StudioPage() {
   const [sens, setSens] = useState(0.35);
   const [reading, setReading] = useState(false);
   const [aiLines, setAiLines] = useState<Record<number, number>>({});
+  const [aiOriginal, setAiOriginal] = useState<Record<number, string>>({});
+  const [shareTraining, setShareTraining] = useState(false);
+  const [trainingNote, setTrainingNote] = useState<string | null>(null);
   const [fullImage, setFullImage] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
   const [condition, setCondition] = useState<"baik" | "rapuh" | "rusak_sebagian" | "fragmentaris">("baik");
@@ -187,7 +190,7 @@ export default function StudioPage() {
       const rects = await segmentLines(image, hasRect ? rect : null, sens);
       if (rects.length === 0) { setError("Baris tidak terdeteksi. Pilih area yang lebih sempit atau tambah baris manual."); setSegmenting(false); return; }
       const thumbs = await Promise.all(rects.map((r) => cropImage(image, r, 700)));
-      setLineRects(rects); setLineThumbs(thumbs); setAiLines({});
+      setLineRects(rects); setLineThumbs(thumbs); setAiLines({}); setAiOriginal({});
       const base = analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
       const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 });
       setAnalysis({ ...base, lines: lines.map((l, k) => ({ ...l, index: k + 1 })) });
@@ -211,6 +214,7 @@ export default function StudioPage() {
       });
       const marks: Record<number, number> = { ...aiLines };
       idx.forEach((k, n) => { marks[k] = data.lines[n].agreement; });
+      setAiOriginal((o) => { const n2 = { ...o }; idx.forEach((k, n) => { n2[k] = data.lines[n].latin; }); return n2; });
       setAiLines(marks);
       if (data.lines.every((l: { latin: string }) => !l.latin)) setError("AI tidak cukup yakin untuk membaca baris-baris ini (biasanya karena resolusi foto rendah). Coba foto yang lebih tajam, area lebih ketat, atau isi manual.");
       setAnalysis({ ...analysis, lines, unicode_transcription: lines.map((l) => l.unicode).join("\n"), latin_transliteration: lines.map((l) => l.latin).join("\n") });
@@ -227,7 +231,7 @@ export default function StudioPage() {
     try {
       const cropped = await cropImage(image, rect);
       if (!fullImage) setFullImage(image);
-      setLineRects([]); setLineThumbs([]); setAiLines({}); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
+      setLineRects([]); setLineThumbs([]); setAiLines({}); setAiOriginal({}); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
       setRect(null); setSuggestions([]); setCropMode(false); setZoom(100); setDims(null);
     } catch { setError("Gagal memotong area."); }
   };
@@ -302,6 +306,30 @@ export default function StudioPage() {
     !!analysis && !!image && !!title.trim() && !!owner.trim() && !!banjar.trim() && lat != null &&
     (visibility === "private" || (consent && !pingit));
 
+  // Lines that may be donated as OCR training data: verified by the user (typed, or an AI draft they changed), complete, with a crop.
+  const eligibleLines = () => {
+    if (!analysis) return [] as number[];
+    return analysis.lines.map((l, i) => i).filter((i) => {
+      const l = analysis.lines[i];
+      if (!lineRects[i] || !l.latin.trim() || l.latin.includes("[?]")) return false;
+      return aiOriginal[i] === undefined || aiOriginal[i].trim() !== l.latin.trim();
+    });
+  };
+  const submitTraining = async (manuscriptId: string, token: string) => {
+    if (!image || !analysis) return;
+    const idx = eligibleLines();
+    if (idx.length === 0) { setTrainingNote("Tidak ada baris yang memenuhi syarat untuk disumbangkan."); return; }
+    try {
+      const samples = await Promise.all(idx.map(async (i) => ({
+        line_index: i, image: await cropImage(image, lineRects[i], 1000, 96), latin: analysis.lines[i].latin.trim(),
+        unicode: analysis.lines[i].unicode, origin: aiOriginal[i] !== undefined ? "ai_corrected" : "manual",
+      })));
+      const res = await fetch("/api/training", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ manuscript_id: manuscriptId, samples }) });
+      const d = await res.json();
+      setTrainingNote(res.ok ? `${d.saved} baris disumbangkan sebagai data latih. Terima kasih!` : d.error || "Gagal menyumbangkan data latih.");
+    } catch { setTrainingNote("Gagal menyumbangkan data latih."); }
+  };
+
   const save = async () => {
     if (!analysis || !image || !session) return;
     setSaving(true);
@@ -329,7 +357,10 @@ export default function StudioPage() {
       });
       const data = await res.json();
       if (!res.ok) setSaveError(data.error || "Gagal menyimpan.");
-      else setSaved({ visibility });
+      else {
+        setSaved({ visibility });
+        if (shareTraining && !pingit && data.id) await submitTraining(data.id, session.access_token);
+      }
     } catch {
       setSaveError("Gagal terhubung ke server.");
     } finally {
@@ -342,6 +373,7 @@ export default function StudioPage() {
       <div className="max-w-md mx-auto px-4 py-16 text-center">
         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-terra-50 text-primary flex items-center justify-center"><Icon name={saved.visibility === "public" ? "public" : "lock"} size={34} /></div>
         <h1 className="font-serif text-3xl text-stone-900 mb-2">Naskah tersimpan</h1>
+        {trainingNote && <p className="text-sm text-emerald-700 mb-3">{trainingNote}</p>}
         <p className="text-stone-600 mb-6">
           {saved.visibility === "public"
             ? "Naskah kini tampil di Arsip Publik. Lokasi ditampilkan sebagai area (±1 km), bukan titik tepat. Anda dapat mencabutnya kapan saja di Vault."
@@ -730,6 +762,15 @@ export default function StudioPage() {
             )}
           </fieldset>
 
+          {lineRects.length > 0 && (
+            <label className={`flex gap-3 rounded-2xl border p-4 text-sm ${pingit ? "opacity-50" : "cursor-pointer"} ${shareTraining ? "border-primary bg-terra-50/40" : "border-stone-200"}`}>
+              <input type="checkbox" disabled={pingit} checked={shareTraining && !pingit} onChange={(e) => setShareTraining(e.target.checked)} />
+              <span className="text-stone-700">
+                <b className="text-stone-900">Sumbangkan data latih OCR aksara Bali</b> (sukarela). Potongan gambar baris dan transliterasi yang sudah Anda periksa ({eligibleLines().length} baris memenuhi syarat) dipakai melatih model pengenal aksara Bali.
+                <span className="block text-xs text-stone-500 mt-1">Hanya baris yang Anda ketik atau koreksi sendiri; draf AI yang tidak diubah tidak ikut. Tidak berlaku untuk naskah pingit. Bagian lain naskah tetap mengikuti pilihan privat/publik Anda. Dapat ditarik kapan saja di Vault.</span>
+              </span>
+            </label>
+          )}
           <AuthPanel />
           {saveError && <p className="text-sm text-red-600">{saveError}</p>}
         </section>

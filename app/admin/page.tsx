@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AuthPanel from "@/components/AuthPanel";
 import { useSession } from "@/lib/useSession";
+import TrainingReview from "@/components/TrainingReview";
 import { CATEGORY_LABELS } from "@/lib/regencies";
 
 type Stats = {
@@ -45,7 +46,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
-  const [tab, setTab] = useState<"ringkasan" | "naskah" | "laporan">("ringkasan");
+  const [tab, setTab] = useState<"ringkasan" | "naskah" | "laporan" | "latih">("ringkasan");
   const [denied, setDenied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [onlyReported, setOnlyReported] = useState(false);
@@ -98,7 +99,7 @@ export default function AdminPage() {
       {stats && (
         <>
           <div className="flex gap-1 border-b border-stone-200">
-            {([["ringkasan", "Ringkasan"], ["naskah", `Naskah publik (${items.length})`], ["laporan", `Laporan (${openReports.length})`]] as const).map(([id, label]) => (
+            {([["ringkasan", "Ringkasan"], ["naskah", `Naskah publik (${items.length})`], ["laporan", `Laporan (${openReports.length})`], ["latih", "Data latih OCR"]] as const).map(([id, label]) => (
               <button key={id} type="button" onClick={() => setTab(id)}
                 className={`px-3 py-2 text-sm -mb-px border-b-2 ${tab === id ? "border-primary text-primary font-semibold" : "border-transparent text-stone-500"}`}>{label}</button>
             ))}
@@ -160,6 +161,8 @@ export default function AdminPage() {
               </ul>
             </div>
           )}
+
+          {tab === "latih" && <TrainingReview headers={headers} />}
 
           {tab === "laporan" && (
             <ul className="space-y-3">

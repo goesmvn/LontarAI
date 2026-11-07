@@ -52,6 +52,18 @@ export default function VaultPage() {
   };
   const makePrivate = (i: Item) => call(i.id, { method: "PATCH", body: JSON.stringify({ visibility: "private" }) });
   const [cert, setCert] = useState<Item | null>(null);
+  const [donated, setDonated] = useState<Record<string, number>>({});
+  const loadDonated = useCallback(async () => {
+    if (!session) return;
+    const d = await fetch("/api/training", { headers: { Authorization: `Bearer ${session.access_token}` } }).then((r) => r.json()).catch(() => null);
+    setDonated(d?.byManuscript ?? {});
+  }, [session]);
+  useEffect(() => { loadDonated(); }, [loadDonated]);
+  const withdraw = async (i: Item) => {
+    if (!session || !window.confirm("Tarik data latih dari naskah ini? Potongan baris yang disumbangkan akan dihapus.")) return;
+    await fetch(`/api/training?manuscript_id=${i.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } });
+    loadDonated();
+  };
   const [shared, setShared] = useState<string | null>(null);
   const share = async (i: Item) => {
     try {
@@ -180,6 +192,12 @@ export default function VaultPage() {
                   {i.leaf?.latin_transliteration && (
                     <div className="rounded-xl bg-linen px-4 py-2.5 border border-linen-line">
                       <p className="font-serif italic text-sm text-stone-600 line-clamp-2 whitespace-pre-line">{i.leaf.latin_transliteration}</p>
+                    </div>
+                  )}
+                  {donated[i.id] > 0 && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
+                      <span className="flex items-center gap-1.5"><Icon name="volunteer_activism" size={16} /> {donated[i.id]} baris disumbangkan sebagai data latih OCR</span>
+                      <button type="button" onClick={() => withdraw(i)} className="underline hover:text-primary">Tarik data latih</button>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-linen-low">
