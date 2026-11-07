@@ -12,6 +12,8 @@ import { enhanceImage } from "@/lib/cv";
 import { latinToBali } from "@/lib/aksara";
 import { buildExport, downloadJson } from "@/lib/export";
 import PrintCertificate from "@/components/PrintCertificate";
+import CropSelector from "@/components/CropSelector";
+import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -55,6 +57,11 @@ export default function StudioPage() {
   const [manualUnicode, setManualUnicode] = useState<Set<number>>(new Set());
   const [showGuide, setShowGuide] = useState(false);
   const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [cropMode, setCropMode] = useState(false);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [suggestions, setSuggestions] = useState<Rect[]>([]);
+  const [detecting, setDetecting] = useState(false);
+  const [fullImage, setFullImage] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
   const [condition, setCondition] = useState<"baik" | "rapuh" | "rusak_sebagian" | "fragmentaris">("baik");
 
@@ -151,7 +158,40 @@ export default function StudioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  const viewSrc = () => (enhanced && enhancedImg ? enhancedImg : image!);
+  const hasRect = !!rect && rect.w > 0.02 && rect.h > 0.02;
+  const autoDetect = async () => {
+    if (!image) return;
+    setDetecting(true); setError(null);
+    try {
+      const found = await detectTextRegions(image);
+      setSuggestions(found);
+      if (found.length === 0) setError("Tidak ada area aksara yang terdeteksi. Tarik area secara manual.");
+      else if (found.length === 1) setRect(found[0]);
+    } catch { setError("Gagal mendeteksi area."); }
+    setDetecting(false);
+  };
+  const analyzeArea = async () => {
+    if (!image || !rect) return;
+    try { analyze(await cropImage(viewSrc(), rect)); } catch { setError("Gagal memotong area."); }
+  };
+  const applyCrop = async () => {
+    if (!image || !rect) return;
+    try {
+      const cropped = await cropImage(image, rect);
+      if (!fullImage) setFullImage(image);
+      setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
+      setRect(null); setSuggestions([]); setCropMode(false); setZoom(100); setDims(null);
+    } catch { setError("Gagal memotong area."); }
+  };
+  const restoreFull = () => {
+    if (!fullImage) return;
+    setImage(fullImage); setFullImage(null); setEnhancedImg(null); setEnhanced(false); setRect(null); setSuggestions([]); setDims(null);
+  };
+
   const reset = () => {
+    setFullImage(null); setRect(null); setSuggestions([]); setCropMode(false);
     setImage(null); setAnalysis(null); setError(null); setSaved(null); setEdited(false); setManualUnicode(new Set());
   };
 
@@ -332,6 +372,10 @@ export default function StudioPage() {
                 <button type="button" onClick={() => toggleEnhanced(true)} className={`px-3 py-1 rounded-lg text-xs ${enhanced ? "bg-white text-stone-900 font-medium shadow-sm" : "text-stone-500 hover:text-stone-900"}`}>
                   {enhancing ? "Memproses…" : "Kontras Tinggi"}
                 </button>
+                <button type="button" onClick={() => { setCropMode(!cropMode); if (cropMode) { setRect(null); setSuggestions([]); } }}
+                  className={`px-3 py-1 rounded-lg text-xs flex items-center gap-1 ${cropMode ? "bg-primary text-white font-medium" : "text-stone-500 hover:text-stone-900"}`}>
+                  <Icon name="crop" size={15} /> Pilih Area
+                </button>
                 <span className="flex items-center gap-0.5 pl-1 text-stone-600">
                   <button type="button" aria-label="Perkecil" onClick={() => setZoom(Math.max(100, zoom - 25))} className="p-1 hover:text-stone-900"><Icon name="zoom_out" size={16} /></button>
                   <span className="text-xs font-mono w-10 text-center">{zoom}%</span>
@@ -342,17 +386,25 @@ export default function StudioPage() {
             <div className="bg-stone-50 p-6 flex-1">
               <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
                 <div className="relative overflow-auto max-h-[60vh] rounded-xl bg-stone-900">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={enhanced && enhancedImg ? enhancedImg : image} alt="Foto lempir lontar" className="max-w-none h-auto block"
-                    style={{ width: `${zoom}%` }} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
-                  {zoom === 100 && (
-                    <div className="pointer-events-none absolute inset-x-4 top-1/3 bottom-1/3 border border-amber-500/40 rounded-md flex items-center justify-between px-2">
-                      <span className="px-2 py-0.5 rounded bg-white/95 font-mono text-[10px] font-semibold text-amberink-700 uppercase">ROI Inskripsi Aktif</span>
-                      {analysis && analysis.model !== "manual" && analysis.confidence_score > 0 && <span className="px-2 py-0.5 rounded bg-white/95 font-mono text-[10px] text-stone-700">Keyakinan {Math.round(analysis.confidence_score * 100)}%</span>}
-                    </div>
-                  )}
+                  <CropSelector src={viewSrc()} zoom={zoom} active={cropMode} rect={rect} onRect={setRect}
+                    suggestions={suggestions} onPickSuggestion={(r) => { setRect(r); setSuggestions([]); }}
+                    onLoad={(w, h) => setDims({ w, h })} />
                 </div>
               </div>
+              {cropMode && (
+                <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-stone-600 mr-auto">
+                    {hasRect && dims ? <>Area dipilih: <b className="font-mono text-stone-900">{Math.round(rect!.w * dims.w)}×{Math.round(rect!.h * dims.h)}px</b></> : "Tarik pada gambar, atau gunakan deteksi otomatis."}
+                  </span>
+                  <button type="button" onClick={autoDetect} disabled={detecting} className="px-3 py-1.5 rounded-lg bg-amberink-100 border border-amberink-200 text-amberink-700 font-medium flex items-center gap-1 disabled:opacity-50">
+                    <Icon name="auto_fix_high" size={15} />{detecting ? "Mendeteksi…" : "Deteksi Area Otomatis"}
+                  </button>
+                  <button type="button" onClick={applyCrop} disabled={!hasRect} className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 font-medium flex items-center gap-1 disabled:opacity-40"><Icon name="crop" size={15} /> Potong &amp; Pakai</button>
+                  <button type="button" onClick={analyzeArea} disabled={!hasRect || loading} className="px-3 py-1.5 rounded-lg bg-primary text-white font-semibold flex items-center gap-1 disabled:opacity-40"><Icon name="smart_toy" size={15} /> Analisis Area (AI)</button>
+                  <button type="button" onClick={() => { setRect(null); setSuggestions([]); }} disabled={!rect && !suggestions.length} className="px-2 py-1.5 text-stone-500 hover:text-primary disabled:opacity-40">Hapus pilihan</button>
+                </div>
+              )}
+              {fullImage && <p className="mt-2 text-xs text-center text-stone-500">Menampilkan potongan area. <button type="button" onClick={restoreFull} className="text-primary underline">Kembalikan gambar penuh</button></p>}
               <p className="mt-4 text-center text-xs text-stone-500 flex items-center justify-center gap-2"><Icon name="open_with" size={16} /> Geser kanvas untuk menelusuri lempir <span>•</span> <span className="font-mono">Kontras tinggi = Sauvola (pratinjau)</span></p>
               <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs">
                 <button type="button" onClick={reset} className="text-stone-600 underline">Ganti foto</button>
@@ -365,8 +417,8 @@ export default function StudioPage() {
               {analysis && analysis.model !== "manual" && <p className="text-xs text-stone-400 text-center mt-2">Bantuan AI terakhir memakai gambar {source === "enhanced" ? "Enhanced" : "asli"}.</p>}
             </div>
             <div className="px-6 py-3.5 border-t border-stone-100 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-stone-600">
-              <span className="flex items-center gap-1.5"><Icon name="verified" size={16} className={dims && Math.max(dims.w, dims.h) >= 1600 ? "text-emerald-600" : "text-amber-600"} />
-                <b className="text-stone-900">{dims && Math.max(dims.w, dims.h) >= 1600 ? "Resolusi Optimal untuk Transkripsi" : "Resolusi rendah: foto lebih dekat disarankan"}</b></span>
+              <span className="flex items-center gap-1.5"><Icon name="verified" size={16} className={dims && Math.max(dims.w, dims.h) >= 1200 ? "text-emerald-600" : "text-amber-600"} />
+                <b className="text-stone-900">{dims && Math.max(dims.w, dims.h) >= 1200 ? "Resolusi Optimal untuk Transkripsi" : "Resolusi rendah: foto lebih dekat disarankan"}</b></span>
               <span>Kondisi Fisik: <b className="text-stone-900">{{ baik: "Baik (Utuh)", rapuh: "Rapuh", rusak_sebagian: "Rusak Sebagian", fragmentaris: "Fragmentaris" }[condition]}</b></span>
               <span className="text-stone-300">|</span>
               <span>Serat Lontar: <b className="text-stone-900">Tal (Borassus)</b></span>
