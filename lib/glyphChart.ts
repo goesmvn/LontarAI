@@ -10,11 +10,7 @@ const RICH: string[][] = [
   ["kta", "kya", "kra", "kwa", "sta", "sna", "nda", "mba", "ngka", "ngga", "nca", "nja", "nta", "mpa", "tra", "dya", "bya", "pra"],
 ];
 
-// Worked examples (different words from anything we benchmark on).
-export const EXAMPLE_LINES = ["sri swasti astu", "wiwaha rama sita", "kala jaya sakti mandi", "pura puseh desa adat"];
-
 let cachedChart: string | null = null;
-let cachedShots: { image: string; latin: string }[] | null = null;
 
 export async function referenceChart(): Promise<string> {
   if (cachedChart) return cachedChart;
@@ -33,19 +29,4 @@ export async function referenceChart(): Promise<string> {
   }));
   cachedChart = canvas.toDataURL("image/png");
   return cachedChart;
-}
-
-export async function exampleShots(): Promise<{ image: string; latin: string }[]> {
-  if (cachedShots) return cachedShots;
-  await document.fonts.load('56px "Noto Sans Balinese"');
-  cachedShots = EXAMPLE_LINES.map((latin) => {
-    const c = document.createElement("canvas"); c.width = 1500; c.height = 150;
-    const x = c.getContext("2d")!;
-    x.fillStyle = "#dcc08f"; x.fillRect(0, 0, 1500, 150); // leaf-like background
-    for (let i = 0; i < 300; i++) { x.fillStyle = `rgba(120,80,30,${(i % 8) * 0.01})`; x.fillRect((i * 97) % 1500, (i * 53) % 150, 60 + (i % 5) * 25, 1); }
-    x.filter = "blur(0.6px)"; x.fillStyle = "#3a2714"; x.font = '56px "Noto Sans Balinese"'; x.textBaseline = "middle";
-    x.fillText(latinToBali(latin), 30, 75);
-    return { image: c.toDataURL("image/png"), latin };
-  });
-  return cachedShots;
 }

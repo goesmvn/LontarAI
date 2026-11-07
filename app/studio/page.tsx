@@ -15,7 +15,10 @@ import PrintCertificate from "@/components/PrintCertificate";
 import CropSelector from "@/components/CropSelector";
 import { cropImage, detectTextRegions, type Rect } from "@/lib/area";
 import { segmentLines } from "@/lib/lines";
-import { referenceChart, exampleShots } from "@/lib/glyphChart";
+import { referenceChart } from "@/lib/glyphChart";
+import { segmentGlyphs, markedTiles, cutGlyphs } from "@/lib/glyphs";
+import { markedExamples } from "@/lib/glyphExamples";
+import { assemble, defaultTrie, loadExtraLexicon, type Cand, type Token } from "@/lib/lexicon";
 import { AFFILIATIONS, CATEGORY_LABELS, REGENCIES } from "@/lib/regencies";
 import type { AnalysisResult } from "@/lib/ai/schema";
 
@@ -69,6 +72,7 @@ export default function StudioPage() {
   const [sens, setSens] = useState(0.35);
   const [reading, setReading] = useState(false);
   const [splitKey, setSplitKey] = useState("");
+  const [lineGlyphs, setLineGlyphs] = useState<Record<number, { thumbs: string[]; cands: Cand[][]; tokens: Token[] }>>({});
   const [aiLines, setAiLines] = useState<Record<number, number>>({});
   const [aiOriginal, setAiOriginal] = useState<Record<number, string>>({});
   const [shareTraining, setShareTraining] = useState(false);
@@ -193,7 +197,7 @@ export default function StudioPage() {
       const base = !fresh && analysis && analysis.model === "manual" ? analysis : emptyAnalysis(0);
       const lines = rects.map((_, k) => base.lines[k] ?? { index: k + 1, block: "penuh" as const, unicode: "", latin: "", confidence: 0 }).map((l, k) => ({ ...l, index: k + 1 }));
       const next = { ...base, lines };
-      setLineRects(rects); setLineThumbs(thumbs); setAiLines({}); setAiOriginal({}); setSplitKey(areaKey());
+      setLineRects(rects); setLineThumbs(thumbs); setAiLines({}); setAiOriginal({}); setLineGlyphs({}); setSplitKey(areaKey());
       setAnalysis(next);
       setManualUnicode(new Set());
       setSegmenting(false);
@@ -215,44 +219,65 @@ export default function StudioPage() {
     await readLinesAI(rects, an);
   };
 
-  // Parameters intentionally shadow the state: callers pass freshly computed values (state may not have updated yet).
+  // Reading pipeline (parameters intentionally shadow the state: callers pass freshly computed values):
+  //   1) split each line into character clusters  2) read every cluster (numbered boxes, line context kept)
+  //   3) assemble words with the lexicon          4) write Aksara Bali Unicode, then Latin.
   const readLinesAI = async (lineRects: Rect[], analysis: AnalysisResult | null) => {
     if (!image || lineRects.length === 0 || !analysis) return;
     setReading(true); setError(null);
     try {
       const idx = lineRects.map((_, i) => i).filter((i) => !analysis.lines[i]?.latin.trim()).slice(0, 8);
       if (idx.length === 0) { setError("Semua baris sudah terisi. Kosongkan baris yang ingin dibaca AI."); setReading(false); return; }
-      // Tile each (wide, thin) line into magnified pieces: the model downsizes long images, which makes glyphs unreadable.
-      const tileRects = (r: Rect): Rect[] => {
-        const srcW = r.w * (dims?.w ?? 1000);
-        const n = Math.max(1, Math.round(srcW / 520));
-        const step = r.w / n, over = step * 0.12;
-        return Array.from({ length: n }, (_, t) => ({ x: Math.max(0, r.x + t * step - over), y: r.y, w: Math.min(step + 2 * over, 1 - Math.max(0, r.x + t * step - over)), h: r.h }));
-      };
-      const [chart, shots, crops] = await Promise.all([referenceChart(), exampleShots(), Promise.all(idx.map((i) => Promise.all(tileRects(lineRects[i]).map((t) => cropImage(image, t, 1600, 200)))))]);
-      const res = await fetch("/api/studio/read-lines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, shots, lines: crops }) });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Gagal membaca baris."); setReading(false); return; }
+      const [chart, shots, extra] = await Promise.all([referenceChart(), markedExamples(3), loadExtraLexicon()]);
+      const trie = defaultTrie(extra);
+      // Stage 1: character clusters per line
+      const perLine = await Promise.all(idx.map(async (i) => {
+        const lineImg = await cropImage(image, lineRects[i], 2400);
+        const boxes = await segmentGlyphs(lineImg);
+        return { i, boxes, tiles: boxes.length ? await markedTiles(lineImg, boxes, 12) : [], thumbs: boxes.length ? await cutGlyphs(lineImg, boxes, 110) : [] };
+      }));
+      const flat = perLine.flatMap((p) => p.tiles.map((t) => ({ p, t })));
+      if (flat.length === 0) { setError("Karakter tidak terdeteksi pada baris-baris ini. Coba area yang lebih ketat atau foto yang lebih tajam."); setReading(false); return; }
+      if (flat.length > 40) { setError("Terlalu banyak karakter terdeteksi (foto beresolusi rendah atau area terlalu luas). Pilih area dengan lebih sedikit baris, atau gunakan foto yang lebih tajam."); setReading(false); return; }
+      // Stage 2: read every cluster (sent in batches of 20 tiles)
+      const sheetsOut: Cand[][][] = [];
+      for (let off = 0; off < flat.length; off += 20) {
+        const part = flat.slice(off, off + 20);
+        const res = await fetch("/api/studio/read-glyphs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chart, shots, sheets: part.map((f) => ({ image: f.t.image, count: f.t.count })) }) });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || "Gagal membaca karakter."); setReading(false); return; }
+        sheetsOut.push(...(data.sheets as Cand[][][]));
+      }
+      const cellsByLine = new Map<number, Cand[][]>();
+      flat.forEach((f, k) => { cellsByLine.set(f.p.i, [...(cellsByLine.get(f.p.i) ?? []), ...sheetsOut[k]]); });
+      // Stage 3 + 4: assemble with lexicon, write aksara + Latin
+      const glyphs = { ...lineGlyphs }; const marks: Record<number, number> = { ...aiLines }; const orig: Record<number, string> = {};
       const lines = analysis.lines.map((l, k) => {
-        const n = idx.indexOf(k);
-        return n < 0 ? l : { ...l, latin: data.lines[n].latin, unicode: latinToBali(String(data.lines[n].latin)) };
+        const p = perLine.find((x) => x.i === k); const cells = cellsByLine.get(k);
+        if (!p || !cells) return l;
+        const tokens = assemble(cells, trie);
+        const latin = tokens.map((t) => t.text).join(" ");
+        const conf = cells.length ? cells.reduce((sum, c) => sum + (c[0] && !/^[?-]$/.test(c[0].cand) ? Math.min(1, (c[0].runs ?? 1) / 2) : 0), 0) / cells.length : 0;
+        glyphs[k] = { thumbs: p.thumbs, cands: cells, tokens };
+        marks[k] = conf; orig[k] = conf >= 0.15 ? latin : "";
+        return conf >= 0.15 ? { ...l, latin, unicode: tokens.map((t) => latinToBali(t.text)).join(" ") } : l;
       });
-      const marks: Record<number, number> = { ...aiLines };
-      idx.forEach((k, n) => { marks[k] = data.lines[n].agreement; });
-      setAiOriginal((o) => { const n2 = { ...o }; idx.forEach((k, n) => { n2[k] = data.lines[n].latin; }); return n2; });
+      setLineGlyphs(glyphs);
       setAiLines(marks);
-      if (data.lines.every((l: { latin: string }) => !l.latin)) setError("AI tidak cukup yakin untuk membaca baris-baris ini (foto kurang tajam atau tulisan terlalu pudar). Coba foto yang lebih tajam, area lebih ketat, atau isi manual.");
+      setAiOriginal((o) => ({ ...o, ...orig }));
+      if (Object.values(orig).every((t) => !t)) setError("AI tidak cukup yakin untuk menyusun baris-baris ini (foto kurang tajam atau tulisan terlalu pudar). Karakter per karakter tetap ditampilkan di bawah tiap baris; isi manual dengan bantuannya.");
       setAnalysis({ ...analysis, lines, unicode_transcription: lines.map((l) => l.unicode).join("\n"), latin_transliteration: lines.map((l) => l.latin).join("\n") });
       setEdited(true);
     } catch { setError("Gagal terhubung ke server."); }
     setReading(false);
   };
+
   const applyCrop = async () => {
     if (!image || !rect) return;
     try {
       const cropped = await cropImage(image, rect);
       if (!fullImage) setFullImage(image);
-      setLineRects([]); setLineThumbs([]); setAiLines({}); setAiOriginal({}); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
+      setLineRects([]); setLineThumbs([]); setAiLines({}); setAiOriginal({}); setLineGlyphs({}); setImage(cropped); setEnhancedImg(null); setEnhanced(false); setSource("asli");
       setRect(null); setSuggestions([]); setCropMode(false); setZoom(100); setDims(null);
     } catch { setError("Gagal memotong area."); }
   };
@@ -598,7 +623,7 @@ export default function StudioPage() {
                 </div>
                 {Object.keys(aiLines).length > 0 && (
                   <p className="text-xs rounded-xl bg-amberink-50 border border-amberink-200 text-amberink-800 px-3 py-2.5 leading-relaxed">
-                    <b>Draf AI per baris, belum terverifikasi.</b> Tiap ubin dibaca dua kali; hanya suku kata yang konsisten dipertahankan, selebihnya <code>[?]</code>. Konsistensi di bawah ±60% berarti bacaan besar kemungkinan keliru: periksa setiap baris terhadap potongan gambarnya, lalu perbaiki.
+                    <b>Draf AI per baris, belum terverifikasi.</b> Urutannya: pisahkan karakter, kenali satu per satu, rangkai kata dengan kamus awal, tulis aksara lalu Latin. Bagian yang tidak terbaca ditandai <code>[?]</code>. Konsistensi di bawah ±60% berarti bacaan besar kemungkinan keliru: periksa setiap baris terhadap potongan gambarnya, lalu perbaiki.
                   </p>
                 )}
                 {analysis.warnings.map((w, i) => (
@@ -655,6 +680,31 @@ export default function StudioPage() {
                       {lineThumbs[i] && (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={lineThumbs[i]} alt={`Potongan baris ${l.index}`} className="w-full max-h-16 object-contain rounded-lg bg-stone-900 border border-stone-200" />
+                      )}
+                      {lineGlyphs[i] && (
+                        <details className="rounded-xl border border-stone-200 bg-white">
+                          <summary className="cursor-pointer px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-stone-500">Karakter per karakter ({lineGlyphs[i].thumbs.length}) · dikenali satu per satu</summary>
+                          <div className="px-3 pb-3 overflow-x-auto">
+                            <div className="flex gap-1.5 min-w-max">
+                              {lineGlyphs[i].thumbs.map((th, c) => {
+                                const cand = lineGlyphs[i].cands[c] ?? [];
+                                const top = cand[0]?.cand ?? "?";
+                                const tk = lineGlyphs[i].tokens.find((t) => c >= t.from && c < t.to);
+                                const fixed = tk?.kind === "kamus";
+                                return (
+                                  <div key={c} className={`w-[72px] shrink-0 rounded-lg border p-1 text-center ${fixed ? "border-emerald-300 bg-emerald-50/50" : "border-stone-200"}`}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={th} alt="" className="w-full h-12 object-contain bg-white rounded" />
+                                    <div className="font-bali text-lg leading-tight text-stone-900">{/^[?-]$/.test(top) ? "·" : latinToBali(top)}</div>
+                                    <div className="text-[10px] font-mono text-stone-600">{top}</div>
+                                    {cand.length > 1 && <div className="text-[9px] text-stone-400 truncate">{cand.slice(1).map((x) => x.cand).join(" / ")}</div>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-2 text-[11px] text-stone-500">Hijau = bagian yang dirangkai dengan bantuan kamus awal ({lineGlyphs[i].tokens.filter((t) => t.kind === "kamus").map((t) => t.text + (t.changed ? "*" : "")).join(", ") || "tidak ada"}); * = bacaan dikoreksi kamus. Kamus awal bukan kamus resmi dan perlu ditinjau ahli.</p>
+                          </div>
+                        </details>
                       )}
                       {/* 1. Aksara Bali Unicode (otomatis dari Latin, dapat disunting) */}
                       <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-2">
