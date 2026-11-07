@@ -214,7 +214,7 @@ export default function StudioPage() {
       if (!res.ok) { setError(data.error || "Gagal membaca baris."); setReading(false); return; }
       const lines = analysis.lines.map((l, k) => {
         const n = idx.indexOf(k);
-        return n < 0 ? l : { ...l, latin: data.lines[n].latin, unicode: latinToBali(String(data.lines[n].latin).replace(/\[\?\]/g, "")) };
+        return n < 0 ? l : { ...l, latin: data.lines[n].latin, unicode: latinToBali(String(data.lines[n].latin)) };
       });
       const marks: Record<number, number> = { ...aiLines };
       idx.forEach((k, n) => { marks[k] = data.lines[n].agreement; });
@@ -642,15 +642,23 @@ export default function StudioPage() {
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={lineThumbs[i]} alt={`Potongan baris ${l.index}`} className="w-full max-h-16 object-contain rounded-lg bg-stone-900 border border-stone-200" />
                       )}
-                      <textarea rows={1} data-latin={i} value={l.latin} placeholder="mis. ong awighnamastu"
-                        onChange={(e) => changeLatin(i, e.target.value)}
-                        className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-serif italic text-base text-stone-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y placeholder:text-stone-400 placeholder:not-italic" />
-                      <details className="text-[11px] text-stone-500">
-                        <summary className="cursor-pointer hover:text-stone-800">Sunting aksara baris ini</summary>
-                        <textarea rows={1} value={l.unicode} placeholder="Aksara Bali (otomatis dari Latin)"
+                      {/* 1. Aksara Bali Unicode (otomatis dari Latin, dapat disunting) */}
+                      <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-2">
+                        <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-0.5">
+                          <span>Aksara Bali</span>
+                          {manualUnicode.has(i) && <button type="button" className="normal-case text-primary hover:underline" onClick={() => { const nm = new Set(manualUnicode); nm.delete(i); setManualUnicode(nm); changeLatin(i, l.latin); }}>kembalikan otomatis</button>}
+                        </div>
+                        <textarea rows={1} value={l.unicode} placeholder="Aksara muncul otomatis dari Latin di bawah"
                           onChange={(e) => changeUnicode(i, e.target.value)}
-                          className="font-bali mt-1 w-full rounded-lg border border-stone-200 px-2 py-1 text-lg resize-y bg-stone-50" />
-                      </details>
+                          className="font-bali w-full bg-transparent text-2xl leading-loose text-stone-900 resize-y focus:outline-none placeholder:font-sans placeholder:text-sm placeholder:text-stone-400" />
+                      </div>
+                      {/* 2. Latin */}
+                      <div>
+                        <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-0.5">Latin</div>
+                        <textarea rows={1} data-latin={i} value={l.latin} placeholder="mis. ong awighnamastu"
+                          onChange={(e) => changeLatin(i, e.target.value)}
+                          className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-serif italic text-base text-stone-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y placeholder:text-stone-400 placeholder:not-italic" />
+                      </div>
                     </div>
                   ))}
                   <button type="button" onClick={addLine} className="text-xs text-primary underline">+ Tambah baris</button>
